@@ -109,7 +109,7 @@ public static unsafe class ImGuiContextMenuBuilderExtensions
             for (var i = 0; i < 4; i++)
             {
                 var container = InventoryManager.Instance()->GetInventoryContainer((InventoryType)i);
-                if (container == null || !container->IsLoaded)
+                if (container == null || container->Loaded != 1)
                     continue;
 
                 for (var j = 0; j < container->GetSize(); j++)
