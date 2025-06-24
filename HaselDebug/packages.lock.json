@@ -83,8 +83,6 @@
       "haselcommon": {
         "type": "Project",
         "dependencies": {
-          "FFXIVClientStructs": "[1.0.0, )",
-          "InteropGenerator.Runtime": "[1.0.0, )",
           "Microsoft.Extensions.DependencyInjection": "[9.0.5, )",
           "Microsoft.Extensions.Logging": "[9.0.5, )"
         }
