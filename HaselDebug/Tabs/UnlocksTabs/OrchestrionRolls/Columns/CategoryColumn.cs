@@ -1,4 +1,4 @@
-using HaselCommon.Extensions.Strings;
+using Dalamud.Utility;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
 using ImGuiNET;
@@ -18,7 +18,7 @@ public partial class CategoryColumn : ColumnString<OrchestrionRollEntry>
     }
 
     public override string ToName(OrchestrionRollEntry entry)
-        => entry.UIParamRow.OrchestrionCategory.Value.Name.ExtractText().StripSoftHypen();
+        => entry.UIParamRow.OrchestrionCategory.Value.Name.ExtractText().StripSoftHyphen();
 
     public override void DrawColumn(OrchestrionRollEntry entry)
     {

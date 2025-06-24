@@ -2,7 +2,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Dalamud.Interface.Utility.Raii;
-using HaselCommon.Extensions.Reflection;
+using HaselCommon.Extensions;
 using HaselCommon.Graphics;
 using HaselDebug.Utils;
 using ImGuiNET;
@@ -69,9 +69,11 @@ public unsafe partial class DebugRenderer
             ImGui.TextUnformatted(i.ToString());
 
             ImGui.TableNextColumn(); // Value
-            var entryNodeOptions = new NodeOptions() { AddressPath = entryAddressPath };
-            HighlightNode(entryAddress, fieldType, ref entryNodeOptions);
-            DrawPointerType(entryAddress, fieldType, entryNodeOptions);
+            DrawPointerType(entryAddress, fieldType, new NodeOptions()
+            {
+                AddressPath = entryAddressPath,
+                IsIconIdField = nodeOptions.IsIconIdField
+            });
         }
     }
 }

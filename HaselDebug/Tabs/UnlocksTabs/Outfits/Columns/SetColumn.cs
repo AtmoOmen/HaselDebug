@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselCommon.Graphics;
 using HaselCommon.Gui;
@@ -30,7 +31,7 @@ public partial class SetColumn : ColumnString<CustomMirageStoreSetItem>
     }
 
     public override string ToName(CustomMirageStoreSetItem row)
-        => _textService.GetItemName(row.RowId);
+        => _textService.GetItemName(row.RowId).ExtractText().StripSoftHyphen();
 
     public override unsafe void DrawColumn(CustomMirageStoreSetItem row)
     {
@@ -75,15 +76,15 @@ public partial class SetColumn : ColumnString<CustomMirageStoreSetItem>
         // TODO: preview whole set??
         _imGuiContextMenuService.Draw($"###Set_{row.RowId}_ItemContextMenu", builder =>
         {
-            builder.AddTryOn(row.Set);
+            builder.AddTryOn(row.Set.RowId);
             builder.AddItemFinder(row.Set.RowId);
             builder.AddCopyItemName(row.Set.RowId);
-            builder.AddItemSearch(row.Set);
+            builder.AddItemSearch(row.Set.RowId);
             builder.AddOpenOnGarlandTools("item", row.Set.RowId);
         });
 
         ImGui.SameLine(IconSize * ImGuiHelpers.GlobalScale + ImGui.GetStyle().ItemSpacing.X, 0);
         ImGuiUtils.PushCursorY(IconSize * ImGuiHelpers.GlobalScale / 2f - ImGui.GetTextLineHeight() / 2f);
-        ImGui.TextUnformatted(_textService.GetItemName(row.RowId));
+        ImGui.TextUnformatted(_textService.GetItemName(row.RowId).ExtractText().StripSoftHyphen());
     }
 }

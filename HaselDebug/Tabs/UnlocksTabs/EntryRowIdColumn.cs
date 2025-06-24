@@ -1,23 +1,25 @@
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Extensions;
-using HaselDebug.Services;
 using HaselDebug.Windows;
 using ImGuiNET;
 using Lumina.Excel;
 
 namespace HaselDebug.Tabs.UnlocksTabs;
 
-public class EntryRowIdColumn<T, TRow>(
-    WindowManager windowManager,
-    TextService textService,
-    LanguageProvider languageProvider,
-    DebugRenderer debugRenderer,
-    ImGuiContextMenuService imGuiContextMenu,
-    Type rowType) : ColumnNumber<T>
+[AutoConstruct]
+public partial class EntryRowIdColumn<T, TRow> : ColumnNumber<T>
     where T : IUnlockEntry
     where TRow : struct, IExcelRow<TRow>
 {
+
+    private readonly IServiceProvider _serviceProvider;
+    private readonly WindowManager _windowManager;
+    private readonly TextService _textService;
+    private readonly LanguageProvider _languageProvider;
+    private readonly ImGuiContextMenuService _imGuiContextMenu;
+    private readonly Type _rowType;
+
     public override int ToValue(T entry)
         => (int)entry.RowId;
 
@@ -25,22 +27,23 @@ public class EntryRowIdColumn<T, TRow>(
     {
         if (ImGui.Selectable(ToName(entry)))
         {
-            windowManager.CreateOrOpen($"{rowType.Name}#{entry.RowId}", () => new ExcelRowTab(windowManager, textService, languageProvider, debugRenderer, rowType, entry.RowId, $"{rowType.Name}#{entry.RowId}"));
+            var title = $"{_rowType.Name}#{entry.RowId} ({_languageProvider.ClientLanguage})";
+            _windowManager.CreateOrOpen(title, () => new ExcelRowTab(_serviceProvider, _rowType, entry.RowId, _languageProvider.ClientLanguage, title));
         }
 
-        imGuiContextMenu.Draw($"{rowType.Name}{entry.RowId}RowIdContextMenu", builder =>
+        _imGuiContextMenu.Draw($"{_rowType.Name}{entry.RowId}RowIdContextMenu", builder =>
         {
-            builder.AddCopyRowId(textService, entry.RowId);
+            builder.AddCopyRowId(_textService, entry.RowId);
         });
     }
 
     public static EntryRowIdColumn<T, TRow> Create()
     {
         return new(
+            Service.Get<IServiceProvider>(),
             Service.Get<WindowManager>(),
             Service.Get<TextService>(),
             Service.Get<LanguageProvider>(),
-            Service.Get<DebugRenderer>(),
             Service.Get<ImGuiContextMenuService>(),
             typeof(TRow)
         )

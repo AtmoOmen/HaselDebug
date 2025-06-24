@@ -1,4 +1,5 @@
 using Dalamud.Game;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselCommon.Graphics;
 using HaselCommon.Services;
 using ImGuiNET;
@@ -22,7 +23,13 @@ public record struct NodeOptions
     public bool RenderSeString { get; set; } = true;
     public AddressPath ResolvedInheritedTypeAddresses { get; set; } = new();
     public bool UseSimpleEventHandlerName { get; set; } = false;
-    public ClientLanguage Language { get; set; } = ClientLanguage.English;
+    public ClientLanguage Language { get; set; } = Service.Get<LanguageProvider>().ClientLanguage;
+    public bool IsIconIdField { get; set; } = false;
+    public bool IsTimestampField { get; set; } = false;
+    public bool HexOnShift { get; set; } = false;
+    public Pointer<AtkUnitBase>? UnitBase { get; set; } = null;
+    public nint HighlightAddress { get; set; } = 0;
+    public Type? HighlightType { get; set; } = null;
 
     public ImGuiTreeNodeFlags GetTreeNodeFlags(ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth)
     {
@@ -37,6 +44,9 @@ public record struct NodeOptions
 
     public NodeOptions WithAddress(nint[] addresses)
         => this with { AddressPath = AddressPath.With(addresses) };
+
+    public NodeOptions WithTitle(string title)
+        => this with { Title = title };
 
     public NodeOptions WithSeStringTitle(string title)
         => this with { SeStringTitle = title };
@@ -62,13 +72,10 @@ public record struct NodeOptions
             DefaultOpen = false,
             DrawContextMenu = null,
             OnHovered = null,
-            DrawSeStringTreeNode = false
+            DrawSeStringTreeNode = false,
+            HighlightAddress = 0,
+            HighlightType = null,
         };
 
     public string GetKey(string prefix) => $"###{prefix}{AddressPath}";
-
-    internal NodeOptions WithSeStringTitle(object value)
-    {
-        throw new NotImplementedException();
-    }
 }

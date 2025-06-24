@@ -1,10 +1,10 @@
 using System.Numerics;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Services;
-using HaselCommon.Utils;
 using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
@@ -72,7 +72,7 @@ public unsafe partial class InventoryTab : DebugTab
             var listContainer = inventoryManager->GetInventoryContainer(inventoryType);
             if (listContainer == null) continue;
 
-            using var itemDisabled = ImRaii.Disabled(listContainer->Loaded != 1);
+            using var itemDisabled = ImRaii.Disabled(listContainer->GetSize() == 0);
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Type
@@ -89,14 +89,14 @@ public unsafe partial class InventoryTab : DebugTab
             });
 
             ImGui.TableNextColumn(); // Size
-            ImGui.TextUnformatted(listContainer->Size.ToString());
+            ImGui.TextUnformatted(listContainer->GetSize().ToString());
         }
     }
 
     private void DrawInventoryType(InventoryType inventoryType)
     {
-        var       container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
-        using var disabled  = ImRaii.Disabled(container->Loaded != 1);
+        var container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
+        using var disabled = ImRaii.Disabled(container->GetSize() == 0);
 
         using var itemTable = ImRaii.Table("InventoryItemTable", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!itemTable) return;
@@ -112,7 +112,7 @@ public unsafe partial class InventoryTab : DebugTab
             var slot = container->GetInventorySlot(i);
             if (slot == null) continue;
 
-            var itemId = (ExcelRowId<Item>)slot->GetItemId();
+            var itemId = slot->GetItemId();
             var quantity = slot->GetQuantity();
 
             using var disableditem = ImRaii.Disabled(itemId == 0);
@@ -132,16 +132,16 @@ public unsafe partial class InventoryTab : DebugTab
             {
                 var itemName = _textService.GetItemName(itemId);
 
-                if (itemId.IsHighQuality())
+                if (ItemUtil.IsHighQuality(itemId))
                     itemName += " " + SeIconChar.HighQuality.ToIconString();
 
                 var itemNameSeStr = new SeStringBuilder()
-                    .PushColorType(_itemService.GetItemRarityColorType(itemId))
+                    .PushColorType(ItemUtil.GetItemRarityColorType(itemId))
                     .Append(itemName)
                     .PopColorType()
                     .ToReadOnlySeString();
 
-                _debugRenderer.DrawIcon(_itemService.GetIconId(itemId), itemId.IsHighQuality());
+                _debugRenderer.DrawIcon(_itemService.GetIconId(itemId), ItemUtil.IsHighQuality(itemId));
                 _debugRenderer.DrawPointerType(slot, typeof(InventoryItem), new NodeOptions()
                 {
                     AddressPath = new AddressPath([(nint)inventoryType, slot->Slot]),

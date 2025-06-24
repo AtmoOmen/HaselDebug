@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
+using Dalamud.Game.Text.Noun.Enums;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.ImGuiSeStringRenderer;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using HaselCommon.Services;
@@ -12,6 +14,7 @@ using HaselDebug.Utils;
 using HaselDebug.Windows;
 using ImGuiNET;
 using Lumina.Data;
+using Lumina.Excel.Sheets;
 using Lumina.Text.Expressions;
 using Lumina.Text.Payloads;
 using Lumina.Text.ReadOnly;
@@ -20,7 +23,7 @@ namespace HaselDebug.Services;
 
 public unsafe partial class DebugRenderer
 {
-    private readonly Dictionary<MacroCode, string[]> ExpressionNames = new()
+    private readonly Dictionary<MacroCode, string[]> _expressionNames = new()
     {
         { MacroCode.SetResetTime, ["Hour", "WeekDay"] },
         { MacroCode.SetTime, ["Time"] },
@@ -48,7 +51,7 @@ public unsafe partial class DebugRenderer
         // { MacroCode.NonBreakingSpace, [] },
         { MacroCode.Icon2, ["IconId"] },
         // { MacroCode.Hyphen, [] },
-        // { MacroCode.Num, [] },
+        { MacroCode.Num, ["Value"] },
         { MacroCode.Hex, ["Value"] },
         { MacroCode.Kilo, ["Value", "Separator"] },
         { MacroCode.Byte, ["Value"] },
@@ -57,10 +60,10 @@ public unsafe partial class DebugRenderer
         { MacroCode.Float, ["Value", "Radix", "Separator"] },
         { MacroCode.Link, ["Type"] },
         { MacroCode.Sheet, ["SheetName", "RowId", "ColumnIndex", "ColumnParam"] },
-        // { MacroCode.String, [] },
-        // { MacroCode.Caps, [] },
+        { MacroCode.String, ["String"] },
+        { MacroCode.Caps, ["String"] },
         { MacroCode.Head, ["String"] },
-        // { MacroCode.Split, [] },
+        { MacroCode.Split, ["String", "Separator"] },
         { MacroCode.HeadAll, ["String"] },
         // { MacroCode.Fixed, [] },
         { MacroCode.Lower, ["String"] },
@@ -75,16 +78,16 @@ public unsafe partial class DebugRenderer
         { MacroCode.Digit, ["Value", "TargetLength"] },
         { MacroCode.Ordinal, ["Value"] },
         { MacroCode.Sound, ["IsJingle", "SoundId"] },
-        // { MacroCode.LevelPos, [] },
+        { MacroCode.LevelPos, ["LevelId"] },
     };
 
     private const LinkMacroPayloadType DalamudLinkType = (LinkMacroPayloadType)Payload.EmbeddedInfoType.DalamudLink - 1;
 
-    private readonly Dictionary<LinkMacroPayloadType, string[]> LinkExpressionNames = new()
+    private readonly Dictionary<LinkMacroPayloadType, string[]> _linkExpressionNames = new()
     {
         { LinkMacroPayloadType.Character, ["Flags", "WorldId"] },
         { LinkMacroPayloadType.Item, ["ItemId", "Rarity"] },
-        { LinkMacroPayloadType.MapPosition, ["TerritoryType/MapId", "Raw X", "Raw Y"] },
+        { LinkMacroPayloadType.MapPosition, ["TerritoryType/MapId", "RawX", "RawY"] },
         { LinkMacroPayloadType.Quest, ["QuestId"] },
         { LinkMacroPayloadType.Achievement, ["AchievementId"] },
         { LinkMacroPayloadType.HowTo, ["HowToId"] },
@@ -95,7 +98,7 @@ public unsafe partial class DebugRenderer
         { DalamudLinkType, ["CommandId", "Extra1", "Extra2", "ExtraString"] }
     };
 
-    private readonly Dictionary<uint, string[]> FixedExpressionNames = new()
+    private readonly Dictionary<uint, string[]> _fixedExpressionNames = new()
     {
         { 1, ["Type0", "Type1", "WorldId"] },
         { 2, ["Type0", "Type1", "ClassJobId", "Level"] },
@@ -179,7 +182,7 @@ public unsafe partial class DebugRenderer
         {
             var text = rosss.ToString();
 
-            using (ImRaii.PushColor(ImGuiCol.Text, (uint)ColorTreeNode, nodeOptions.RenderSeString))
+            using (ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector(), nodeOptions.RenderSeString))
                 clicked = ImGui.Selectable(text + nodeOptions.GetKey("SeStringSelectable"));
 
             _imGuiContextMenu.Draw(nodeOptions.GetKey("SeStringSelectableContextMenu"), (builder) =>
@@ -196,7 +199,12 @@ public unsafe partial class DebugRenderer
         {
             var str = new ReadOnlySeString(rosss.Data.ToArray());
             var windowTitle = nodeOptions.Title ?? (nodeOptions.SeStringTitle ?? str).ToString();
-            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _languageProvider, this, _seStringEvaluator, str, nodeOptions.Language, windowTitle));
+            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_serviceProvider)
+            {
+                String = str,
+                Language = nodeOptions.Language,
+                WindowName = windowTitle,
+            });
         }
     }
 
@@ -356,6 +364,44 @@ public unsafe partial class DebugRenderer
                 }
             }
 
+            if (macroCode is MacroCode.Link && subType != null && idx == 1)
+            {
+                switch ((LinkMacroPayloadType)subType)
+                {
+                    case LinkMacroPayloadType.Item:
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(_textService.GetItemName(u32).ExtractText().StripSoftHyphen());
+                        break;
+
+                    case LinkMacroPayloadType.Quest:
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(_textService.GetQuestName(u32));
+                        break;
+
+                    case LinkMacroPayloadType.Achievement when _dataManager.GetExcelSheet<Achievement>(_languageProvider.ClientLanguage).TryGetRow(u32, out var achievementRow):
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(achievementRow.Name.ExtractText());
+                        break;
+
+                    case LinkMacroPayloadType.HowTo when _dataManager.GetExcelSheet<HowTo>(_languageProvider.ClientLanguage).TryGetRow(u32, out var howToRow):
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(howToRow.Name.ExtractText());
+                        break;
+
+                    case LinkMacroPayloadType.Status when _dataManager.GetExcelSheet<Status>(_languageProvider.ClientLanguage).TryGetRow(u32, out var statusRow):
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(statusRow.Name.ExtractText());
+                        break;
+
+                    case LinkMacroPayloadType.AkatsukiNote when
+                        _dataManager.GetSubrowExcelSheet<AkatsukiNote>(_languageProvider.ClientLanguage).TryGetRow(u32, out var akatsukiNoteRow) &&
+                        _dataManager.GetExcelSheet<AkatsukiNoteString>(_languageProvider.ClientLanguage).TryGetRow((uint)akatsukiNoteRow[0].Unknown2, out var akatsukiNoteStringRow):
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted(akatsukiNoteStringRow.Unknown0.ExtractText());
+                        break;
+                }
+            }
+
             // TODO: clickable link to open row in new window :O
 
             return;
@@ -413,16 +459,16 @@ public unsafe partial class DebugRenderer
 
     private string GetExpressionName(MacroCode macroCode, uint? subType, int idx, ReadOnlySeExpressionSpan expr)
     {
-        if (ExpressionNames.TryGetValue(macroCode, out var names) && idx < names.Length)
+        if (_expressionNames.TryGetValue(macroCode, out var names) && idx < names.Length)
             return names[idx];
 
         if (macroCode == MacroCode.Switch)
             return $"Case {idx - 1}";
 
-        if (macroCode == MacroCode.Link && subType != null && LinkExpressionNames.TryGetValue((LinkMacroPayloadType)subType, out var linkNames) && idx - 1 < linkNames.Length)
+        if (macroCode == MacroCode.Link && subType != null && _linkExpressionNames.TryGetValue((LinkMacroPayloadType)subType, out var linkNames) && idx - 1 < linkNames.Length)
             return linkNames[idx - 1];
 
-        if (macroCode == MacroCode.Fixed && subType != null && FixedExpressionNames.TryGetValue((uint)subType, out var fixedNames) && idx < fixedNames.Length)
+        if (macroCode == MacroCode.Fixed && subType != null && _fixedExpressionNames.TryGetValue((uint)subType, out var fixedNames) && idx < fixedNames.Length)
             return fixedNames[idx];
 
         if (macroCode == MacroCode.Link && idx == 4)

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Common.Configuration;
 using HaselCommon.Services;
@@ -222,9 +221,7 @@ public unsafe partial class ConfigTab : DebugTab
             if (dict.ContainsKey(i))
                 continue;
 
-            var name = configEntry->Name != null
-                ? MemoryHelper.ReadStringNullTerminated((nint)configEntry->Name)
-                : "";
+            var name = configEntry->Name.ToString();
 
             if (dict.ContainsValue(name))
                 name = $"{name}_{i}";
@@ -269,8 +266,8 @@ public unsafe partial class ConfigTab : DebugTab
                 continue;
 
             var name = configEntry->Name != null
-                ? MemoryHelper.ReadStringNullTerminated((nint)configEntry->Name)
-                : "";
+                ? configEntry->Name.ToString()
+                : string.Empty;
 
             // Dalamud doesn't support multiple options with the same name
             if (!usedNames.Add(name))

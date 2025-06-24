@@ -1,4 +1,3 @@
-using HaselCommon.Extensions.Strings;
 using HaselCommon.Graphics;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
@@ -40,10 +39,8 @@ public partial class NameColumn : ColumnString<GlassesSheet>
             _unlocksTabUtils.DrawTooltip(
                 (uint)row.Icon,
                 name,
-                null,
-                !row.Description.IsEmpty
-                    ? row.Description.ExtractText().StripSoftHypen()
-                    : null);
+                default,
+                row.Description);
         }
     }
 }

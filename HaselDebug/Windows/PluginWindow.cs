@@ -11,6 +11,7 @@ using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using ImGuiNET;
+using Microsoft.Extensions.Logging;
 
 namespace HaselDebug.Windows;
 
@@ -18,10 +19,12 @@ namespace HaselDebug.Windows;
 public partial class PluginWindow : SimpleWindow
 {
     private const uint SidebarWidth = 250;
+
+    private readonly ILogger<PluginWindow> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly WindowManager _windowManager;
     private readonly PluginConfig _pluginConfig;
     private readonly TextService _textService;
-    private readonly LanguageProvider _languageProvider;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly DebugRenderer _debugRenderer;
@@ -29,7 +32,7 @@ public partial class PluginWindow : SimpleWindow
     private readonly IEnumerable<IDebugTab> _debugTabs;
 
     private IDebugTab[] _tabs;
-    private IDrawableTab? _selectedTab;
+    private IDebugTab? _selectedTab;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -58,7 +61,7 @@ public partial class PluginWindow : SimpleWindow
         });
 
         _tabs = [.. _debugTabs
-            .Where(t => !t.GetType().GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition().IsAssignableTo(typeof(ISubTab<>)))) // no sub tabs
+            //.Where(t => !t.GetType().GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition().IsAssignableTo(typeof(ISubTab<>)))) // no sub tabs
             .OrderBy(t => t.Title)
         ];
 
@@ -124,7 +127,7 @@ public partial class PluginWindow : SimpleWindow
                     {
                         Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                         Label = _textService.Translate("ContextMenu.TabPopout"),
-                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _languageProvider, tab))
+                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, tab))
                     });
 
                     builder.Add(new ImGuiContextMenuEntry()
@@ -172,7 +175,7 @@ public partial class PluginWindow : SimpleWindow
                 {
                     Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _languageProvider, tab))
+                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, tab))
                 });
             });
 
@@ -199,7 +202,7 @@ public partial class PluginWindow : SimpleWindow
                         {
                             Visible = subTab.CanPopOut && !_windowManager.Contains(win => win.WindowName == subTab.Title),
                             Label = _textService.Translate("ContextMenu.TabPopout"),
-                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _languageProvider, subTab))
+                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, subTab))
                         });
                     });
 
@@ -210,8 +213,8 @@ public partial class PluginWindow : SimpleWindow
                         - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY())
                         + new Vector2(MathF.Round(halfLineHeight - ImGui.GetStyle().ItemSpacing.Y / 2), -MathF.Round(ImGui.GetStyle().ItemSpacing.Y / 2));
 
-                    ImGui.GetWindowDrawList().AddLine(linePos, linePos + new Vector2(0, i == subTabCount - 1 ? halfLineHeight : lineHeight), Color.Grey3);
-                    ImGui.GetWindowDrawList().AddLine(linePos + new Vector2(0, halfLineHeight), linePos + new Vector2(halfLineHeight, halfLineHeight), Color.Grey3);
+                    ImGui.GetWindowDrawList().AddLine(linePos, linePos + new Vector2(0, i == subTabCount - 1 ? halfLineHeight : lineHeight), Color.Grey3.ToUInt());
+                    ImGui.GetWindowDrawList().AddLine(linePos + new Vector2(0, halfLineHeight), linePos + new Vector2(halfLineHeight, halfLineHeight), Color.Grey3.ToUInt());
                 }
             }
         }
@@ -227,14 +230,14 @@ public partial class PluginWindow : SimpleWindow
     private void SelectTabWithoutSave(string internalName)
     {
         _selectedTab = _pinnedInstances.FirstOrDefault(tab => tab.InternalName == internalName)
-            ?? (IDrawableTab?)_tabs.FirstOrDefault(tab => tab.InternalName == internalName)
+            ?? (IDebugTab?)_tabs.FirstOrDefault(tab => tab.InternalName == internalName)
             ?? _tabs
                 .Where(tab => tab.SubTabs?.Any(subTab => subTab.InternalName == internalName) == true)
                 .Select(tab => tab.SubTabs?.FirstOrDefault(subTab => subTab.InternalName == internalName))
                 .FirstOrDefault();
     }
 
-    private void SelectTab(IDrawableTab tab)
+    private void SelectTab(IDebugTab tab)
     {
         _selectedTab = tab;
         _pluginConfig.LastSelectedTab = tab.InternalName;
@@ -257,6 +260,9 @@ public partial class PluginWindow : SimpleWindow
         {
             _selectedTab.Draw();
         }
-        catch { }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error while drawing {tabName}", _selectedTab.InternalName);
+        }
     }
 }

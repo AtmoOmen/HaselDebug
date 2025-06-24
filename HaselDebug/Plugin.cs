@@ -19,15 +19,11 @@ public class Plugin : IDalamudPlugin
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
-        IFramework framework,
-        IPluginLog pluginLog,
         ISigScanner sigScanner,
-        IDataManager dataManager,
-        IClientState clientState)
+        IDataManager dataManager)
     {
         _pluginInterface = pluginInterface;
 
-#if HAS_LOCAL_CS
         FFXIVClientStructs.Interop.Generated.Addresses.Register();
         Addresses.Register();
         Resolver.GetInstance.Setup(
@@ -35,7 +31,6 @@ public class Plugin : IDalamudPlugin
             dataManager.GameData.Repositories["ffxiv"].Version,
             new FileInfo(Path.Join(pluginInterface.ConfigDirectory.FullName, "SigCache.json")));
         Resolver.GetInstance.Resolve();
-#endif
 
         Service.Collection
             .AddDalamud(pluginInterface)
@@ -43,9 +38,7 @@ public class Plugin : IDalamudPlugin
             .AddHaselCommon()
             .AddHaselDebug();
 
-        Service.BuildProvider();
-
-        framework.RunOnFrameworkThread(() =>
+        Service.Initialize(() =>
         {
             if (Service.Get<PluginConfig>().AutoOpenPluginWindow)
                 Service.Get<PluginWindow>().Open();

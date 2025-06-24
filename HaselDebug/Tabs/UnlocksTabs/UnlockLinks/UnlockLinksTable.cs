@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Game.Enums;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
-using HaselCommon.Sheets;
 using HaselDebug.Tabs.UnlocksTabs.UnlockLinks.Columns;
 using Lumina.Excel.Sheets;
 
@@ -15,7 +15,7 @@ namespace HaselDebug.Tabs.UnlocksTabs.UnlockLinks;
 public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposable
 {
     internal readonly ExcelService _excelService;
-    private readonly SeStringEvaluatorService _seStringEvaluator;
+    private readonly SeStringEvaluator _seStringEvaluator;
     private readonly TextService _textService;
     private readonly IClientState _clientState;
 
@@ -105,10 +105,10 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
 
         foreach (var row in _excelService.GetSheet<BuddyAction>())
         {
-            if (row.Reward != 0)
+            if (row.UnlockLink != 0)
             {
-                if (!dict.TryGetValue(row.Reward, out var names))
-                    dict.Add(row.Reward, names = []);
+                if (!dict.TryGetValue(row.UnlockLink - 1u, out var names))
+                    dict.Add(row.UnlockLink - 1u, names = []);
 
                 names.Add(new UnlockEntry()
                 {
@@ -158,10 +158,10 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
 
         foreach (var row in _excelService.GetSheet<Perform>())
         {
-            if (row.StopAnimation.RowId > 0)
+            if (row.UnlockLink > 0)
             {
-                if (!dict.TryGetValue(row.StopAnimation.RowId, out var names))
-                    dict.Add(row.StopAnimation.RowId, names = []);
+                if (!dict.TryGetValue((uint)row.UnlockLink, out var names))
+                    dict.Add((uint)row.UnlockLink, names = []);
 
                 names.Add(new UnlockEntry()
                 {
@@ -246,7 +246,7 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
             }
         }
 
-        CustomHairMakeType hairMakeType = default;
+        HairMakeType hairMakeType = default;
         var hasFoundHairMakeType = isLoggedIn && _excelService.TryFindRow(t => t.Tribe.RowId == tribeId && t.Gender == sexId, out hairMakeType);
 
         foreach (var row in _excelService.GetSheet<CharaMakeCustomize>())
@@ -263,7 +263,7 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
                     row.HintItem.Value.ItemAction.RowId != 0 &&
                     row.HintItem.Value.ItemAction.IsValid &&
                     row.HintItem.Value.ItemAction.Value.Type == (uint)ItemActionType.UnlockLink &&
-                    row.HintItem.Value.ItemAction.Value.Data[0] == row.Data)
+                    row.HintItem.Value.ItemAction.Value.Data[0] == row.UnlockLink)
                 {
                     // Hairstyles
                     if (row.HintItem.Value.ItemAction.Value.Data[1] == 4659 && // LogMessage id
@@ -302,14 +302,14 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
                 }
             }
 
-            if (!dict.TryGetValue(row.Data, out var names))
-                dict.Add(row.Data, names = []);
+            if (!dict.TryGetValue(row.UnlockLink, out var names))
+                dict.Add(row.UnlockLink, names = []);
 
             var title = string.Empty;
 
             if (row.HintItem.RowId != 0 && row.HintItem.IsValid)
             {
-                title = _textService.GetItemName(row.HintItem.RowId);
+                title = _textService.GetItemName(row.HintItem.RowId).ExtractText().StripSoftHyphen();
             }
             else if (row.Hint.RowId != 0 && row.Hint.IsValid)
             {
@@ -329,11 +329,11 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
 
         foreach (var row in _excelService.GetSheet<MJILandmark>())
         {
-            if (row.Unknown0 == 0)
+            if (row.UnlockLink == 0)
                 continue;
 
-            if (!dict.TryGetValue(row.Unknown0, out var names))
-                dict.Add(row.Unknown0, names = []);
+            if (!dict.TryGetValue(row.UnlockLink, out var names))
+                dict.Add(row.UnlockLink, names = []);
 
             names.Add(new UnlockEntry()
             {
@@ -347,11 +347,11 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
 
         foreach (var row in _excelService.GetSheet<CSBonusContentType>())
         {
-            if (row.Unknown11 == 0)
+            if (row.UnlockLink == 0)
                 continue;
 
-            if (!dict.TryGetValue(row.Unknown11, out var names))
-                dict.Add(row.Unknown11, names = []);
+            if (!dict.TryGetValue(row.UnlockLink, out var names))
+                dict.Add(row.UnlockLink, names = []);
 
             names.Add(new UnlockEntry()
             {
@@ -400,8 +400,8 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
         {
             if (row.Requirement0.RowId is > 0 and < 65536)
             {
-                if (!dict.TryGetValue(row.Requirement0.RowId, out var names))
-                    dict.Add(row.Requirement0.RowId, names = []);
+                if (!dict.TryGetValue(row.Requirement0.RowId - 1u, out var names))
+                    dict.Add(row.Requirement0.RowId - 1u, names = []);
 
                 names.Add(new UnlockEntry()
                 {
@@ -414,8 +414,8 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
 
             if (row.Requirement1.RowId is > 0 and < 65536)
             {
-                if (!dict.TryGetValue(row.Requirement1.RowId, out var names))
-                    dict.Add(row.Requirement1.RowId, names = []);
+                if (!dict.TryGetValue(row.Requirement1.RowId - 1u, out var names))
+                    dict.Add(row.Requirement1.RowId - 1u, names = []);
 
                 names.Add(new UnlockEntry()
                 {
@@ -440,7 +440,7 @@ public unsafe partial class UnlockLinksTable : Table<UnlockLinkEntry>, IDisposab
                 RowType = typeof(Item),
                 RowId = row.RowId,
                 IconId = row.Icon,
-                Label = _textService.GetItemName(row.RowId)
+                Label = _textService.GetItemName(row.RowId).ExtractText().StripSoftHyphen()
             });
         }
 

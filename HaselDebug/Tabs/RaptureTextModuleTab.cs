@@ -82,11 +82,36 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
         new TextEntry(TextEntryType.Macro, "<split(Hello World, ,1)>"), // Hello
         new TextEntry(TextEntryType.Macro, "<br>"),
         new TextEntry(TextEntryType.Macro, "<split(Hello World, ,2)>"), // World
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(2,1,0,0,A)>"),
+        new TextEntry(TextEntryType.String, "Item Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(4,66822,0,0,Q)>"),
+        new TextEntry(TextEntryType.String, "Quest Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(5,910,0,0,A)>"),
+        new TextEntry(TextEntryType.String, "Achievement Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(6,1,0,0,H)>"),
+        new TextEntry(TextEntryType.String, "HowTo Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(8,327,0,0,S)>"),
+        new TextEntry(TextEntryType.String, "Status Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
+        new TextEntry(TextEntryType.Macro, "<br>"),
+        new TextEntry(TextEntryType.Macro, "<link(10,1,0,0,A)>"),
+        new TextEntry(TextEntryType.String, "AkatsukiNote Link Test"),
+        new TextEntry(TextEntryType.Macro, "<link(0xCE,0,0,0,)>"),
     ];
 
+    private readonly IServiceProvider _serviceProvider;
     private readonly DebugRenderer _debugRenderer;
     private readonly WindowManager _windowManager;
-    private readonly SeStringEvaluatorService _seStringEvaluator;
+    private readonly SeStringEvaluator _seStringEvaluator;
     private readonly TextService _textService;
     private readonly LanguageProvider _languageProvider;
     private readonly TextureService _textureService;
@@ -402,7 +427,12 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
 
         if (_inspectorWindow == null)
         {
-            _inspectorWindow = _windowManager.CreateOrOpen("StringMaker Preview", () => new SeStringInspectorWindow(_windowManager, _textService, _languageProvider, _debugRenderer, _seStringEvaluator, "", _languageProvider.ClientLanguage, "StringMaker Preview"));
+            _inspectorWindow = _windowManager.CreateOrOpen("StringMaker Preview", () => new SeStringInspectorWindow(_serviceProvider)
+            {
+                String = "",
+                Language = _languageProvider.ClientLanguage,
+                WindowName = "StringMaker Preview",
+            });
             UpdateInspectorString();
         }
 
@@ -439,7 +469,7 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
                         temp->SetString(entry.Message);
                         temp2->Clear();
 
-                        RaptureTextModule.Instance()->TextModule.ProcessMacroCode(temp2, temp->StringPtr);
+                        RaptureTextModule.Instance()->TextModule.ProcessMacroCode(temp2, temp->StringPtr.Value);
                         var out1 = PronounModule.Instance()->ProcessString(temp2, true);
                         var out2 = PronounModule.Instance()->ProcessString(out1, false);
 
@@ -448,7 +478,7 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
                 }
             }
 
-            RaptureLogModule.Instance()->PrintString(output->StringPtr);
+            RaptureLogModule.Instance()->PrintString(output->StringPtr.Value);
             temp2->Dtor(true);
             temp->Dtor(true);
             output->Dtor(true);
@@ -484,6 +514,30 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
 
             if (ImGui.Button("Clear entries"))
                 _entries.Clear();
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Copy as hex"))
+        {
+            var sb = new SeStringBuilder();
+
+            foreach (var entry in _entries)
+            {
+                switch (entry.Type)
+                {
+                    case TextEntryType.String:
+                        sb.Append(entry.Message);
+                        break;
+
+                    case TextEntryType.Macro:
+                    case TextEntryType.Fixed:
+                        sb.AppendMacroString(entry.Message);
+                        break;
+                }
+            }
+
+            ImGui.SetClipboardText(string.Join(", ", sb.ToArray().Select(b => $"0x{b:X2}")));
         }
 
         ImGui.SameLine();

@@ -1,5 +1,147 @@
 # Changelog
 
+## [1.28.0] (2025-06-20)
+
+- **Added:** StdLinkedLists are now supported.
+- **Added:** StdStrings are now rendered as normal, copyable strings.
+- **Added:** ResourceHandle.FileType is now written as string.
+- **Added:** The following pointers are now rendered as array:
+  - AtkUldManager.Assets
+  - AtkUldManager.PartsList
+  - AtkUldManager.NodeList
+  - AtkUldManager.Objects (exception for ObjectCount 1 which is displayed directly)
+  - AtkUldWidgetInfo.NodeList
+  - AtkTimelineManager.Timelines
+  - AtkTimelineManager.Animations
+  - AtkTimelineManager.LabelSets
+  - AtkTimelineManager.KeyFrames
+- **Updated:** Atk nodes as TreeNode are now always highlighted on hover.
+- **Changed:** The AtkValues table is no longer limited in size.
+
+## [1.27.0] (2025-06-19)
+
+- **Added:** Addon Inspector can now display Events. Target and Listener columns are hidden unless an event points to something different than the same Node or UnitBase.
+- **Added:** A Drag Drop Type tab displaying the matrix of DragDropTypeMasks.
+- **Updated:** Animation Group values in the Addon Inspector are now copyable and colors are shown with ImGui.ColorEdit3 (can't make them read-only with Dalamuds ImGui version).
+- **Fixed:** Addon Inspector now primarily uses the addon id, before checking the addon name. This should fix displaying the wrong addon if multiple have the same name.
+- **Fixed:** TreeNode ids were no longer unique with the last update.
+- **Updated:** ClientStructs updated to the branch used in my [DragDrop PR](https://github.com/aers/FFXIVClientStructs/pull/1457), based on [a93b68f5](https://github.com/aers/FFXIVClientStructs/tree/a93b68f5) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b45b7d42..a93b68f5)).
+
+## [1.26.0] (2025-06-14)
+
+- **Added:** Addon Inspector can now display Animation Groups and has an "Export Timeline" button to copy code for KamiToolKit. (Thanks to @MidoriKami!)
+- **Added:** A new Atk Handler Calls tab to log calls of `AtkStage->AtkExternalInterface->CallHandler`. I named as many handlers as I could.
+- **Updated:** More AtkValue ValueTypes are now rendered, including nested AtkValues.
+- **Updated:** ClientStructs now at [b45b7d42](https://github.com/aers/FFXIVClientStructs/tree/b45b7d42) ([compare](https://github.com/aers/FFXIVClientStructs/compare/7028ecae..b45b7d42)).
+
+## [1.25.0] (2025-06-10)
+
+- **Updated:** Addon Inspector was updated a bit:
+  - Addons and Nodes can be popped out into their own window (rightclick the tree nodes)
+  - Most properties are now editable
+  - Label Sets are now displayed
+  - Added a search bar to the top-level (=addon) Node List, which can find nodes by address (hex only), NodeId, NodeType, ComponentType
+
+  It's still work in progress. Animations and Parts will be added later.
+- **Updated:** ClientStructs now at [7028ecae](https://github.com/aers/FFXIVClientStructs/tree/7028ecae) ([compare](https://github.com/aers/FFXIVClientStructs/compare/3d53c797..7028ecae)).
+
+## [1.24.2] (2025-06-04)
+
+- **Added:** Type redirect for PublicContentOccultCrescent.
+- **Updated:** ClientStructs now at [3d53c797](https://github.com/aers/FFXIVClientStructs/tree/3d53c797) ([compare](https://github.com/aers/FFXIVClientStructs/compare/901b2362..3d53c797)).
+
+## [1.24.1] (2025-05-27)
+
+- **Updated:** ClientStructs now at [901b2362](https://github.com/aers/FFXIVClientStructs/tree/901b2362) ([compare](https://github.com/aers/FFXIVClientStructs/compare/bd82d122..901b2362)).
+
+## [1.24.0] (2025-05-27)
+
+- **Added:** Type redirects for AtkResNode and AtkComponentBase.
+- **Added:** Blue Mage Actions tab.
+- **Added:** Input tab.
+- **Changed:** The AtkEventData in the Atk Events tab now displays the correct struct based on the AtkEventType.
+- **Fixed:** BuddyAction and QuestAcceptAdditionCondition unlock link indexes were off by 1.
+- **Updated:** ClientStructs now at [bd82d122](https://github.com/aers/FFXIVClientStructs/tree/bd82d122) ([compare](https://github.com/aers/FFXIVClientStructs/compare/ba0a6602..bd82d122)).
+
+## [1.23.1] (2025-04-30)
+
+- **Added:** DrawObject type redirects, based on their ObjectType:
+  - CharacterBase, based on their ModelType:
+    - Human
+    - Demihuman
+    - Monster
+    - Weapon
+- **Changed:** The "Icon" name check to draw icons was reverted. Instead, an additional `uint` check was added.
+- **Updated:** ClientStructs now at [ba0a6602](https://github.com/aers/FFXIVClientStructs/tree/ba0a6602) ([compare](https://github.com/aers/FFXIVClientStructs/compare/377ddb3..ba0a6602)).
+
+## [1.23.0] (2025-04-30)
+
+- **Added:** A Conditions tab, using the CS Conditions struct instead of Dalamuds ConditionFlags enum, providing xmldoc comments if available.
+- **Added:** A new Object Tables category, featuring:
+  - Character Manager,
+  - Chara Select Character List,
+  - Client Object Manager,
+  - Game Object Manager, now with 3 tabs IndexSorted, GameObjectIdSorted and EntityIdSorted,
+  - and the newly reversed Stand Object Manager, displaying nameless, "lively" EventNpcs and EventObjects.
+
+  These now reuse the same table code and I've added the EntityId and ObjectId columns. It's now possible to hide columns, though settings are not saved for these tables.
+- **Changed:** Previously, fields with "IconId" in their name showed the icon next to the value, now it's for all fields containing just "Icon".
+- **Updated:** I updated my TerritoryIntendedUse enum in HaselCommon, so 60 is now called CosmicExploration.
+- **Updated:** ClientStructs now at [377ddb3](https://github.com/aers/FFXIVClientStructs/tree/377ddb3) ([compare](https://github.com/aers/FFXIVClientStructs/compare/09d40c6a..377ddb3)).
+
+## [1.22.0] (2025-04-23)
+
+- **Added:** Added a "Copy as hex" button to SeStringMaker that lets you copy the SeString as raw byte data.
+- **Fixed:** Incorrect StdSet/SetMap memory alignment.
+- **Fixed:** Inventory tab now correctly relies on functions, so it can work in space (Cosmopouch1/2).
+- **Fixed:** Unreleased Glasses (rows without icons) are now hidden.
+- **Fixed:** Fish not connected with an item are now hidden.
+- **Fixed:** Aether Currents table was missing the increment for the numbering.
+- **Fixed:** Errors that are thrown while rendering a tab are now properly logged.
+- **Updated:** ClientStructs now at [09d40c6a](https://github.com/aers/FFXIVClientStructs/tree/09d40c6a) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4ae9f561..09d40c6a)).
+
+## [1.21.0] (2025-04-13)
+
+- **Added:** Holding shift in Unlock Links -> Titles now shows the english version of the titles.
+- **Added:** Added Radius to the Agent Map Event Markers table.
+- **Updated:** Excel v2 now has a better preview for column values.
+- **Fixed:** Agent Map Event Markers table broke when the icon wasn't found.
+- **Fixed:** Added the missing GameObject -> Companion type redirect.
+- **Fixed:** Object Table tab now sorts by index.
+- **Updated:** ClientStructs now at [4ae9f561](https://github.com/aers/FFXIVClientStructs/tree/4ae9f561) ([compare](https://github.com/aers/FFXIVClientStructs/compare/a625ce4d..4ae9f561)).
+
+## [1.20.1] (2025-03-30)
+
+- **Added:** Node ID is now shown in the Node List in the Addon Inspector.
+- **Added:** Right clicking the Columns button in Excel (v2) now clears all columns (except for RowId/SubrowId).
+- **Fixed:** Enums with FlagsAttribute displayed incorrect values.
+- **Updated:** ClientStructs now at [a625ce4d](https://github.com/aers/FFXIVClientStructs/tree/a625ce4d) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b484eac4..a625ce4d)).
+
+## [1.20.0] (2025-03-26)
+
+First update for Patch 7.2.
+
+- **Added:** A work in progress Excel (v2) tab, which is based on Lumina.Excel properties.
+- **Added:** Support for IconId arrays in the struct renderer.
+- **Removed:** Noun Processor and Sheet Redirect Test tabs were removed, because the SeStringEvaluator is now part of Dalamud and therefore I removed those services.
+- **Fixed:** HouseIds in the Housing tab are now correctly displayed as structs.
+- **Updated:** ClientStructs now at [b484eac4](https://github.com/aers/FFXIVClientStructs/tree/b484eac4) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4d473c7..b484eac4)).
+
+## [1.19.0] (2025-03-17)
+
+- **Added:** An AtkEvents tab for global events, excluding MouseMove, MouseOver, MouseOut, FocusStart, FocusStop, WindowRollOver, WindowRollOut, TimerTick, 74 and 79 to avoid spam.
+- **Added:** The Excel tab now features the LogKind sheet.
+- **Added:** SeString inspector now shows the name of the Item, Quest, Achievement, HowTo, Status, and AkatsukiNote that was linked in the Link payload.
+- **Added:** The Shop tab now displays the used AtkComponentList struct.
+- **Changed internally:** The Excel tab was rewritten, so that things can be reused.
+- **Updated:** SeStringEvaluator is now reflecting the state of my Dalamud PR, correctly handling Sheet redirects.
+- **Updated:** ClientStructs now at [4d473c7](https://github.com/aers/FFXIVClientStructs/tree/4d473c7) ([compare](https://github.com/aers/FFXIVClientStructs/compare/977a8fd..4d473c7)), which is my PR 1322 based on the `7.2_prep` branch.
+
+## [1.18.2] (2025-03-07)
+
+- **Updated:** Added expression names for macro codes Num, String, Caps, Split, LevelPos.
+- **Fixed:** NounProcessor tab didn't initialize.
+
 ## [1.18.1] (2025-03-06)
 
 - **Updated:** ClientStructs now at [977a8fd](https://github.com/aers/FFXIVClientStructs/tree/977a8fd) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4a727b4..977a8fd)).
@@ -292,7 +434,22 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.18.1...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.28.0...main
+[1.28.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.27.0...1.28.0
+[1.27.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.26.0...1.27.0
+[1.26.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.25.0...1.26.0
+[1.25.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.2...1.25.0
+[1.24.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.1...1.24.2
+[1.24.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.0...1.24.1
+[1.24.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.1...1.24.0
+[1.23.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.0...1.23.1
+[1.23.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.22.0...1.23.0
+[1.22.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.21.0...1.22.0
+[1.21.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.20.1...1.21.0
+[1.20.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.20.0...v1.20.1
+[1.20.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.19.0...v1.20.0
+[1.19.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.18.2...v1.19.0
+[1.18.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.16.0...v1.17.0

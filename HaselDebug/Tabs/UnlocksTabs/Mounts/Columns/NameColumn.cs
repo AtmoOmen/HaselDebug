@@ -2,7 +2,6 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using HaselCommon.Extensions.Strings;
 using HaselCommon.Graphics;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
@@ -65,10 +64,10 @@ public partial class NameColumn : ColumnString<Mount>
             _unlocksTabUtils.DrawTooltip(
                 row.Icon,
                 name,
-                null,
-                _excelService.TryGetRow<MountTransient>(row.RowId, out var transient) && !transient.DescriptionEnhanced.IsEmpty
-                    ? transient.DescriptionEnhanced.ExtractText().StripSoftHypen()
-                    : null);
+                default,
+                _excelService.TryGetRow<MountTransient>(row.RowId, out var transient)
+                    ? transient.DescriptionEnhanced
+                    : default);
         }
     }
 }

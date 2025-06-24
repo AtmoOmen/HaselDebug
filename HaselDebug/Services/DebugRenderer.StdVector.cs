@@ -1,6 +1,6 @@
 using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.STD;
-using HaselCommon.Extensions.Reflection;
+using HaselCommon.Extensions;
 using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
@@ -41,7 +41,7 @@ public unsafe partial class DebugRenderer
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == "0x" + address.ToString("X")),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_windowManager, _textService, _languageProvider, this, address, typeof(StdVector<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
+                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, address, typeof(StdVector<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
                 });
             }
         });
@@ -66,7 +66,7 @@ public unsafe partial class DebugRenderer
             ImGui.TextUnformatted(i.ToString());
 
             ImGui.TableNextColumn(); // Value
-            DrawPointerType((nint)(firstElement + i * size), valueType, new NodeOptions() { AddressPath = nodeOptions.AddressPath });
+            DrawPointerType((nint)(firstElement + i * size), valueType, new NodeOptions() { AddressPath = nodeOptions.AddressPath, IsIconIdField = nodeOptions.IsIconIdField });
         }
     }
 }

@@ -2,7 +2,7 @@ using System.Linq;
 using System.Reflection;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
-using HaselCommon.Extensions.Reflection;
+using HaselCommon.Extensions;
 using HaselDebug.Utils;
 using ImGuiNET;
 using Lumina.Excel;
@@ -21,7 +21,6 @@ public unsafe partial class DebugRenderer
         }
 
         nodeOptions = nodeOptions.WithAddress((sheetType.Name.GetHashCode(), (nint)rowId).GetHashCode());
-        nodeOptions.Language = _languageProvider.ClientLanguage;
 
         var title = $"{sheetType.Name}#{rowId}";
         if (!string.IsNullOrEmpty(nodeOptions.Title))
@@ -30,7 +29,7 @@ public unsafe partial class DebugRenderer
             nodeOptions = nodeOptions with { Title = null };
         }
 
-        using var titleColor = ImRaii.PushColor(ImGuiCol.Text, nodeOptions.TitleColor ?? (uint)ColorTreeNode);
+        using var titleColor = ImRaii.PushColor(ImGuiCol.Text, nodeOptions.TitleColor ?? ColorTreeNode.ToVector());
         using var node = ImRaii.TreeNode($"{title}###{nodeOptions.AddressPath}", nodeOptions.GetTreeNodeFlags());
         nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
         if (!node) return;
@@ -78,11 +77,15 @@ public unsafe partial class DebugRenderer
         if (propInfo == null)
             return;
 
-        DrawExcelProp(propInfo.Name, propInfo.PropertyType, propInfo.GetValue(row), depth, nodeOptions);
+        DrawExcelProp(propInfo, row, rowId, depth, nodeOptions);
     }
 
-    private void DrawExcelProp(string propName, Type propType, object? value, uint depth, NodeOptions nodeOptions)
+    private void DrawExcelProp(PropertyInfo propInfo, object? row, uint rowId, uint depth, NodeOptions nodeOptions)
     {
+        var propName = propInfo.Name;
+        var propType = propInfo.PropertyType;
+        var value = propInfo.GetValue(row);
+
         if (value == null)
         {
             ImGui.TextUnformatted("null");
@@ -91,10 +94,12 @@ public unsafe partial class DebugRenderer
 
         if (propType == typeof(ReadOnlySeString))
         {
-            DrawSeString(((ReadOnlySeString)value).AsSpan(), true, new NodeOptions()
+            DrawSeString(((ReadOnlySeString)value).AsSpan(), new NodeOptions()
             {
-                RenderSeString = nodeOptions.RenderSeString,
-                AddressPath = nodeOptions.AddressPath.With(propName.GetHashCode())
+                AddressPath = nodeOptions.AddressPath.With(propName.GetHashCode()),
+                RenderSeString = false,
+                Title = $"{row!.GetType().Name}#{rowId} ({nodeOptions.Language})",
+                Language = nodeOptions.Language
             });
             return;
         }
@@ -138,7 +143,7 @@ public unsafe partial class DebugRenderer
             var collectionType = propType.GenericTypeArguments[0];
             var propNodeOptions = nodeOptions.WithAddress(collectionType.Name.GetHashCode());
 
-            using var colTitleColor = ImRaii.PushColor(ImGuiCol.Text, (uint)ColorTreeNode);
+            using var colTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
             using var colNode = ImRaii.TreeNode($"{count} Value{(count != 1 ? "s" : "")}{propNodeOptions.GetKey("CollectionNode")}", nodeOptions.GetTreeNodeFlags());
             if (!colNode) return;
             colTitleColor?.Dispose();
@@ -207,21 +212,21 @@ public unsafe partial class DebugRenderer
 
                 if (collectionType.IsStruct())
                 {
-                    using var structTitleColor = ImRaii.PushColor(ImGuiCol.Text, (uint)ColorTreeNode);
+                    using var structTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
                     using var structNode = ImRaii.TreeNode($"{collectionType.Name}{propNodeOptions.GetKey($"{collectionType.Name}_{i}")}", nodeOptions.GetTreeNodeFlags());
                     if (!structNode) continue;
                     structTitleColor?.Dispose();
 
-                    foreach (var propInfo in collectionType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+                    foreach (var pi in collectionType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
                     {
-                        if (propInfo.Name == "RowId")
+                        if (pi.Name == "RowId")
                             continue;
 
-                        DrawCopyableText(propInfo.PropertyType.ReadableTypeName(), propInfo.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
+                        DrawCopyableText(pi.PropertyType.ReadableTypeName(), pi.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
                         ImGui.SameLine();
-                        ImGui.TextColored(ColorFieldName, propInfo.Name);
+                        ImGui.TextColored(ColorFieldName, pi.Name);
                         ImGui.SameLine();
-                        DrawExcelProp(propInfo.PropertyType.Name, propInfo.PropertyType, propInfo.GetValue(colValue), depth, nodeOptions);
+                        DrawExcelProp(pi, colValue, rowId, depth, nodeOptions);
                     }
 
                     continue;
@@ -237,6 +242,11 @@ public unsafe partial class DebugRenderer
             }
 
             return;
+        }
+
+        if (nodeOptions.IsIconIdField && propType.IsNumericType())
+        {
+            DrawIcon(value, propType);
         }
 
         ImGui.TextUnformatted(value.ToString());

@@ -1,3 +1,4 @@
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
@@ -23,7 +24,7 @@ public partial class NameColumn : ColumnString<SpearfishingItem>
     }
 
     public override string ToName(SpearfishingItem row)
-        => _textService.GetItemName(row.Item.RowId);
+        => _textService.GetItemName(row.Item.RowId).ExtractText().StripSoftHyphen();
 
     public override unsafe void DrawColumn(SpearfishingItem row)
     {
@@ -41,7 +42,7 @@ public partial class NameColumn : ColumnString<SpearfishingItem>
         {
             builder.AddItemFinder(item.RowId);
             builder.AddCopyItemName(item.RowId);
-            builder.AddItemSearch(item);
+            builder.AddItemSearch(item.RowId);
             builder.AddOpenOnGarlandTools("item", item.RowId);
         });
     }

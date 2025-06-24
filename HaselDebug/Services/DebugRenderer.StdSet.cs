@@ -31,7 +31,7 @@ public unsafe partial class DebugRenderer
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == "0x" + address.ToString("X")),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_windowManager, _textService, _languageProvider, this, address, typeof(StdSet<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
+                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, address, typeof(StdSet<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
                 });
             }
         });
@@ -98,7 +98,7 @@ public unsafe partial class DebugRenderer
             ImGui.TableNextColumn(); // Value
 
             // since key equals value, we just use the key here for simplicity
-            DrawPointerType(keyAddress, valueType, new NodeOptions() { AddressPath = nodeOptions.AddressPath.With(keyAddress) });
+            DrawPointerType(keyAddress, valueType, new NodeOptions() { AddressPath = nodeOptions.AddressPath.With(keyAddress), IsIconIdField = nodeOptions.IsIconIdField });
         }
     }
 
@@ -111,8 +111,6 @@ public unsafe partial class DebugRenderer
         public nint _Right; // StdMapNode<TKey, TValue>*
         public byte _Color; // RedBlackTreeNodeColor
         public byte _Isnil; // bool
-        public byte _18;
-        public byte _19;
         public TValue _Myval;
     }
 }

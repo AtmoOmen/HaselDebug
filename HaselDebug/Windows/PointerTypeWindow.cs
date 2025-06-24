@@ -1,32 +1,27 @@
 using System.Numerics;
 using HaselCommon.Gui;
-using HaselCommon.Services;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using ImGuiNET;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Windows;
 
-public class PointerTypeWindow : SimpleWindow
+[AutoConstruct]
+public partial class PointerTypeWindow : SimpleWindow
 {
-    private NodeOptions? NodeOptions;
-    private readonly DebugRenderer debugRenderer;
-    private readonly nint address;
-    private readonly Type type;
+    private DebugRenderer _debugRenderer;
+    private NodeOptions? _nodeOptions;
+    private nint _address;
+    private Type _type;
 
-    public PointerTypeWindow(
-        WindowManager windowManager,
-        TextService textService,
-        LanguageProvider languageProvider,
-        DebugRenderer debugRenderer,
-        nint address,
-        Type type,
-        string? name = null) : base(windowManager, textService, languageProvider)
+    [AutoPostConstruct]
+    private void Initialize(IServiceProvider serviceProvider, nint address, Type type, string name)
     {
-        this.debugRenderer = debugRenderer;
-        this.address = address;
-        this.type = type;
-        WindowName = $"{name ?? string.Empty}##{type.Name}";
+        _debugRenderer = serviceProvider.GetRequiredService<DebugRenderer>();
+        _address = address;
+        _type = type;
+        WindowName = $"{name}##{type.Name}";
     }
 
     public override void OnOpen()
@@ -44,9 +39,9 @@ public class PointerTypeWindow : SimpleWindow
 
     public override void Draw()
     {
-        debugRenderer.DrawPointerType(address, type, NodeOptions ??= new NodeOptions()
+        _debugRenderer.DrawPointerType(_address, _type, _nodeOptions ??= new NodeOptions()
         {
-            AddressPath = new AddressPath(address),
+            AddressPath = new AddressPath(_address),
             DefaultOpen = true,
         });
     }

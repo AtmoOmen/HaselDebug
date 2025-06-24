@@ -1,8 +1,8 @@
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using HaselCommon.Extensions.Strings;
 using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -19,7 +19,7 @@ public unsafe partial class RaptureHotbarModuleTab : DebugTab
     private readonly DebugRenderer _debugRenderer;
     private readonly ExcelService _excelService;
     private readonly TextService _textService;
-    private readonly SeStringEvaluatorService _seStringEvaluatorService;
+    private readonly SeStringEvaluator _seStringEvaluatorService;
     private readonly ITextureProvider _textureProvider;
 
     public override void Draw()
@@ -89,8 +89,8 @@ public unsafe partial class RaptureHotbarModuleTab : DebugTab
                         Title = slot->CommandType switch
                         {
                             RaptureHotbarModule.HotbarSlotType.Action => _textService.GetActionName(slot->CommandId),
-                            RaptureHotbarModule.HotbarSlotType.Item => _textService.GetItemName(slot->CommandId),
-                            RaptureHotbarModule.HotbarSlotType.EventItem => _textService.GetItemName(slot->CommandId),
+                            RaptureHotbarModule.HotbarSlotType.Item => _textService.GetItemName(slot->CommandId).ExtractText().StripSoftHyphen(),
+                            RaptureHotbarModule.HotbarSlotType.EventItem => _textService.GetItemName(slot->CommandId).ExtractText().StripSoftHyphen(),
                             RaptureHotbarModule.HotbarSlotType.Emote => _textService.GetEmoteName(slot->CommandId),
                             RaptureHotbarModule.HotbarSlotType.Macro => GetMacroName(slot->CommandId),
                             RaptureHotbarModule.HotbarSlotType.Marker => _excelService.TryGetRow<Marker>(slot->CommandId, out var marker) ? marker.Name.ExtractText() : $"Marker#{slot->CommandId}",
@@ -109,7 +109,7 @@ public unsafe partial class RaptureHotbarModuleTab : DebugTab
                             RaptureHotbarModule.HotbarSlotType.ExtraCommand => _excelService.TryGetRow<ExtraCommand>(slot->CommandId, out var extraCommand) ? extraCommand.Name.ExtractText() : $"ExtraCommand#{slot->CommandId}",
                             RaptureHotbarModule.HotbarSlotType.PvPQuickChat => _excelService.TryGetRow<QuickChat>(slot->CommandId, out var quickChat) ? quickChat.NameAction.ExtractText() : $"QuickChat#{slot->CommandId}",
                             RaptureHotbarModule.HotbarSlotType.PvPCombo => _excelService.TryGetRow<ActionComboRoute>(slot->CommandId, out var actionComboRoute) ? actionComboRoute.Name.ExtractText() : $"ActionComboRoute#{slot->CommandId}",
-                            RaptureHotbarModule.HotbarSlotType.BgcArmyAction => _excelService.TryGetRow<BgcArmyAction>(slot->CommandId, out var bgcArmyAction) ? bgcArmyAction.Unknown0.ExtractText() : $"BgcArmyAction#{slot->CommandId}",
+                            RaptureHotbarModule.HotbarSlotType.BgcArmyAction => _excelService.TryGetRow<BgcArmyAction>(slot->CommandId, out var bgcArmyAction) ? bgcArmyAction.Name.ExtractText() : $"BgcArmyAction#{slot->CommandId}",
                             RaptureHotbarModule.HotbarSlotType.PerformanceInstrument => _excelService.TryGetRow<Perform>(slot->CommandId, out var perform) ? perform.Instrument.ExtractText() : $"Perform#{slot->CommandId}",
                             RaptureHotbarModule.HotbarSlotType.McGuffin => _excelService.TryGetRow<McGuffinUIData>(_excelService.TryGetRow<McGuffin>(slot->CommandId, out var mcGuffin) ? mcGuffin.UIData.RowId : 0, out var mcGuffinUIData) ? mcGuffinUIData.Name.ExtractText() : $"McGuffin#{slot->CommandId}",
                             RaptureHotbarModule.HotbarSlotType.Ornament => _textService.GetOrnamentName(slot->CommandId),
@@ -149,7 +149,7 @@ public unsafe partial class RaptureHotbarModuleTab : DebugTab
         if (slot->RecipeValid == 0)
             return _textService.GetAddonText(1449); // Deleted Recipes
 
-        return _seStringEvaluatorService.EvaluateFromAddon(1442, [slot->RecipeItemId, slot->RecipeCraftType + 8]).ExtractText().StripSoftHypen();
+        return _seStringEvaluatorService.EvaluateFromAddon(1442, [slot->RecipeItemId, slot->RecipeCraftType + 8]).ExtractText().StripSoftHyphen();
     }
 
     private void DrawHotbarSlotIcon(RaptureHotbarModule.HotbarSlot slot)
