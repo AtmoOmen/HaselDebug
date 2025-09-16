@@ -1,4 +1,3 @@
-using Dalamud.Utility;
 using HaselCommon.Gui.ImGuiTable;
 
 namespace HaselDebug.Tabs.UnlocksTabs.AetherCurrents.Columns;
@@ -13,5 +12,5 @@ public class ZoneColumn : ColumnString<AetherCurrentEntry>
     }
 
     public override string ToName(AetherCurrentEntry entry)
-        => entry.CompFlgSet.Territory.Value.Map.Value.PlaceName.Value.Name.ExtractText().StripSoftHyphen();
+        => entry.CompFlgSet.Territory.Value.Map.Value.PlaceName.Value.Name.ToString();
 }

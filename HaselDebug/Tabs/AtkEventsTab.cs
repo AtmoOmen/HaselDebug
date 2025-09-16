@@ -7,7 +7,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -19,8 +18,8 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
     private readonly List<(DateTime, nint)> _events = [];
     private Hook<AtkEventDispatcher.Delegates.DispatchEvent>? _dispatchEventHook;
     private bool _enabled = false;
+    private bool _isInitialized;
 
-    [AutoPostConstruct]
     private void Initialize()
     {
         _dispatchEventHook = _gameInteropProvider.HookFromAddress<AtkEventDispatcher.Delegates.DispatchEvent>(AtkEventDispatcher.MemberFunctionPointers.DispatchEvent, DispatchEventDetour);
@@ -61,9 +60,15 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
 
     public override void Draw()
     {
+        if (!_isInitialized)
+        {
+            Initialize();
+            _isInitialized = true;
+        }
+
         if (_dispatchEventHook == null)
         {
-            ImGui.TextUnformatted("Hook not created");
+            ImGui.Text("Hook not created"u8);
             return;
         }
 
@@ -82,12 +87,12 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
         ImGui.SameLine();
         if (ImGui.Button("Clear")) _events.Clear();
 
-        using var table = ImRaii.Table("EventTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
+        using var table = ImRaii.Table("EventTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Time", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("EventData", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Time"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn("EventData"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -97,11 +102,11 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(time.ToLongTimeString());
+            ImGui.Text(time.ToLongTimeString());
 
             ImGui.TableNextColumn();
             var eventType = ((AtkEventDispatcher.Event*)evt)->State.EventType;
-            ImGui.TextUnformatted(eventType.ToString() + (Enum.GetName(eventType) != null ? $" ({(int)eventType})" : string.Empty));
+            ImGui.Text(eventType.ToString() + (Enum.GetName(eventType) != null ? $" ({(int)eventType})" : string.Empty));
 
             ImGui.TableNextColumn();
 
@@ -117,7 +122,7 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
             {
                 _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkListItemData), new NodeOptions() { AddressPath = new(i) });
             }
-            else if ((int)eventType is >= (int)AtkEventType.DragDropBegin and <= (int)AtkEventType.DragDropCancel)
+            else if ((int)eventType is >= (int)AtkEventType.DragDropBegin and <= (int)AtkEventType.DragDropClick)
             {
                 _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkDragDropData), new NodeOptions() { AddressPath = new(i) });
             }

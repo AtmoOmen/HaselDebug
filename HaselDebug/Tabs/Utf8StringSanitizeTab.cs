@@ -5,7 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.System.String;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using ImGuiNET;
+using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -220,24 +220,24 @@ public unsafe class Utf8StringSanitizeTab : DebugTab
             using var node = ImRaii.TreeNode($"U+{entry.Range.FirstCodePoint:X4}-U+{entry.Range.FirstCodePoint + entry.Range.Length - 1:X4} - {entry.Name}###{entry.Name}", ImGuiTreeNodeFlags.SpanFullWidth);
             if (!node) continue;
 
-            ImGui.TextUnformatted("Input:");
+            ImGui.Text("Input:"u8);
             ImGui.SameLine();
-            _debugRenderer.DrawCopyableText(entry.Input);
+            ImGuiUtilsEx.DrawCopyableText(entry.Input);
 
             using var table = ImRaii.Table(entry.Name + "Table", 2, ImGuiTableFlags.Borders);
             if (!table) continue;
 
-            ImGui.TableSetupColumn("Flag", ImGuiTableColumnFlags.WidthFixed, 150);
-            ImGui.TableSetupColumn("Output", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Flag"u8, ImGuiTableColumnFlags.WidthFixed, 150);
+            ImGui.TableSetupColumn("Output"u8, ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableHeadersRow();
 
             for (var i = 0; i < entry.Output.Length; i++)
             {
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted($"{(AllowedEntities)(1 << i)}");
+                ImGui.Text($"{(AllowedEntities)(1 << i)}");
                 ImGui.TableNextColumn();
-                _debugRenderer.DrawCopyableText(entry.Output[i]);
+                ImGuiUtilsEx.DrawCopyableText(entry.Output[i]);
             }
         }
     }

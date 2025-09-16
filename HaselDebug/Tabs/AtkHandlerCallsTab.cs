@@ -7,7 +7,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using ImGuiNET;
 using Lumina.Text.ReadOnly;
 using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
 
@@ -25,12 +24,12 @@ public unsafe partial class AtkHandlerCallsTab : DebugTab, IDisposable
     private readonly List<CallEntry> _calls = [];
     private Hook<CallHandler>? _callHandlerDetour;
     private bool _enabled = false;
+    private bool _isInitialized;
 
-    [AutoPostConstruct]
     private void Initialize()
     {
         _callHandlerDetour = _gameInteropProvider.HookFromSignature<CallHandler>(
-            "40 53 48 83 EC 40 48 8B 81 ?? ?? ?? ?? 48 8B DA",
+            "40 53 48 83 EC ?? 48 8B 81 ?? ?? ?? ?? 48 8B DA 48 8B 91 ?? ?? ?? ?? 48 2B C2 45 8B D0",
             CallHandlerDetour);
     }
 
@@ -128,9 +127,15 @@ public unsafe partial class AtkHandlerCallsTab : DebugTab, IDisposable
 
     public override void Draw()
     {
+        if (!_isInitialized)
+        {
+            Initialize();
+            _isInitialized = true;
+        }
+
         if (_callHandlerDetour == null)
         {
-            ImGui.TextUnformatted("Hook not created");
+            ImGui.Text("Hook not created"u8);
             return;
         }
 
@@ -158,12 +163,12 @@ public unsafe partial class AtkHandlerCallsTab : DebugTab, IDisposable
             _calls.Clear();
         }
 
-        using var table = ImRaii.Table("CallTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
+        using var table = ImRaii.Table("CallTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Time", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Handler", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Values", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Time"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Handler"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Values"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -173,10 +178,10 @@ public unsafe partial class AtkHandlerCallsTab : DebugTab, IDisposable
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(record.Time.ToLongTimeString());
+            ImGui.Text(record.Time.ToLongTimeString());
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(record.handlerIndex switch
+            ImGui.Text(record.handlerIndex switch
             {
                 1 => "UnregisterAddonCallback",
                 2 => "AddonAgentCallback",

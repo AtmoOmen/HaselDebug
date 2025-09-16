@@ -3,7 +3,6 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 using Lumina.Text.ReadOnly;
 
 namespace HaselDebug.Tabs;
@@ -19,15 +18,15 @@ public unsafe partial class AgentMapEventMarkersTab : DebugTab
     {
         var agent = AgentMap.Instance();
 
-        using var table = ImRaii.Table("AgentMapEventMarkersTable", 7, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("AgentMapEventMarkersTable"u8, 7, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("LevelId", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("ObjectiveId", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("MapId", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Radius", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("TerritoryTypeId", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("LevelId"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("ObjectiveId"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("MapId"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Radius"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("TerritoryTypeId"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupColumn("TooltipString");
         ImGui.TableSetupScrollFreeze(6, 1);
         ImGui.TableHeadersRow();
@@ -38,29 +37,29 @@ public unsafe partial class AgentMapEventMarkersTab : DebugTab
 
             ImGui.TableNextColumn(); // Icon
             if (_textureProvider.TryGetFromGameIcon(marker.IconId, out var sharedTex) && sharedTex.TryGetWrap(out var tex, out var _))
-                ImGui.Image(tex.ImGuiHandle, new(ImGui.GetTextLineHeight()));
+                ImGui.Image(tex.Handle, new(ImGui.GetTextLineHeight()));
 
             ImGui.SameLine();
-            ImGui.TextUnformatted(marker.IconId.ToString());
+            ImGui.Text(marker.IconId.ToString());
 
             ImGui.TableNextColumn(); // LevelId
-            ImGui.TextUnformatted(marker.LevelId.ToString());
+            ImGui.Text(marker.LevelId.ToString());
 
             ImGui.TableNextColumn(); // ObjectiveId
-            ImGui.TextUnformatted(marker.ObjectiveId.ToString());
+            ImGui.Text(marker.ObjectiveId.ToString());
 
             ImGui.TableNextColumn(); // MapId
-            ImGui.TextUnformatted(marker.MapId.ToString());
+            ImGui.Text(marker.MapId.ToString());
 
             ImGui.TableNextColumn(); // Radius
-            ImGui.TextUnformatted(marker.Radius.ToString());
+            ImGui.Text(marker.Radius.ToString());
 
             ImGui.TableNextColumn(); // TerritoryTypeId
-            ImGui.TextUnformatted(marker.TerritoryTypeId.ToString());
+            ImGui.Text(marker.TerritoryTypeId.ToString());
 
             ImGui.TableNextColumn(); // TooltipString
             if (marker.TooltipString != null && marker.TooltipString->StringPtr.Value != null)
-                ImGui.TextUnformatted(new ReadOnlySeStringSpan(marker.TooltipString->StringPtr.Value).ExtractText());
+                ImGui.Text(new ReadOnlySeStringSpan(marker.TooltipString->StringPtr.Value).ToString());
         }
     }
 }

@@ -1,9 +1,10 @@
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using HaselCommon.Gui;
 using HaselCommon.Services;
-using ImGuiNET;
+using HaselDebug.Utils;
 using Lumina.Excel.Sheets;
 using Lumina.Text.ReadOnly;
 
@@ -13,7 +14,7 @@ namespace HaselDebug.Services;
 public unsafe partial class ObjectTableRenderer
 {
     private readonly DebugRenderer _debugRenderer;
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
     private readonly TextService _textService;
     private readonly ExcelService _excelService;
     private readonly WindowManager _windowManager;
@@ -24,13 +25,13 @@ public unsafe partial class ObjectTableRenderer
         using var table = ImRaii.Table(key, 7, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Resizable | ImGuiTableFlags.Hideable | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 30);
-        ImGui.TableSetupColumn("Address", ImGuiTableColumnFlags.WidthFixed, 110);
-        ImGui.TableSetupColumn("EntityId", ImGuiTableColumnFlags.WidthFixed, 110);
-        ImGui.TableSetupColumn("ObjectId", ImGuiTableColumnFlags.WidthFixed, 110);
-        ImGui.TableSetupColumn("ObjectKind", ImGuiTableColumnFlags.WidthFixed, 90);
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("EventHandler", ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("Address"u8, ImGuiTableColumnFlags.WidthFixed, 110);
+        ImGui.TableSetupColumn("EntityId"u8, ImGuiTableColumnFlags.WidthFixed, 110);
+        ImGui.TableSetupColumn("ObjectId"u8, ImGuiTableColumnFlags.WidthFixed, 110);
+        ImGui.TableSetupColumn("ObjectKind"u8, ImGuiTableColumnFlags.WidthFixed, 90);
+        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("EventHandler"u8, ImGuiTableColumnFlags.WidthFixed, 300);
         ImGui.TableSetupScrollFreeze(5, 1);
         ImGui.TableHeadersRow();
 
@@ -40,12 +41,12 @@ public unsafe partial class ObjectTableRenderer
             if (gameObject == null) continue;
 
             var objectKind = gameObject->GetObjectKind();
-            var objectName = new ReadOnlySeStringSpan(gameObject->GetName().AsSpan()).ExtractText();
+            var objectName = new ReadOnlySeStringSpan(gameObject->GetName().AsSpan()).ToString();
 
             var title = objectName;
             if (objectKind == ObjectKind.EventNpc && _excelService.TryGetRow<ENpcResident>(gameObject->BaseId, out var resident) && !resident.Title.IsEmpty)
             {
-                var evaluated = _seStringEvaluator.EvaluateFromAddon(37, [resident.Title]).ExtractText();
+                var evaluated = _seStringEvaluator.EvaluateFromAddon(37, [resident.Title]).ToString();
                 if (!string.IsNullOrWhiteSpace(evaluated))
                 {
                     if (!string.IsNullOrEmpty(evaluated))
@@ -60,19 +61,19 @@ public unsafe partial class ObjectTableRenderer
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(entries[i].Index.ToString());
+            ImGui.Text(entries[i].Index.ToString());
 
             ImGui.TableNextColumn(); // Address
             _debugRenderer.DrawAddress(gameObject);
 
             ImGui.TableNextColumn(); // EntityId
-            _debugRenderer.DrawCopyableText(gameObject->EntityId.ToString("X"));
+            ImGuiUtilsEx.DrawCopyableText(gameObject->EntityId.ToString("X"));
 
             ImGui.TableNextColumn(); // ObjectId
-            _debugRenderer.DrawCopyableText(gameObject->GetGameObjectId().Id.ToString("X"));
+            ImGuiUtilsEx.DrawCopyableText(gameObject->GetGameObjectId().Id.ToString("X"));
 
             ImGui.TableNextColumn(); // ObjectKind
-            _debugRenderer.DrawCopyableText(objectKind.ToString());
+            ImGuiUtilsEx.DrawCopyableText(objectKind.ToString());
 
             ImGui.TableNextColumn(); // Name
             _debugRenderer.DrawPointerType(
@@ -106,40 +107,40 @@ public unsafe partial class ObjectTableRenderer
                 switch (gameObject->EventHandler->Info.EventId.ContentId)
                 {
                     case EventHandlerContent.Adventure:
-                        ImGui.TextUnformatted($"Adventure#{gameObject->EventHandler->Info.EventId.Id}");
+                        ImGui.Text($"Adventure#{gameObject->EventHandler->Info.EventId.Id}");
 
                         if (_excelService.TryGetRow<Adventure>(gameObject->EventHandler->Info.EventId.Id, out var adventure) && !adventure.Name.IsEmpty)
                         {
                             ImGuiUtils.SameLineSpace();
-                            ImGui.TextUnformatted($"({adventure.Name})");
+                            ImGui.Text($"({adventure.Name})");
                         }
                         break;
 
                     case EventHandlerContent.Quest:
-                        ImGui.TextUnformatted($"Quest#{gameObject->EventHandler->Info.EventId.EntryId + 0x10000u}");
+                        ImGui.Text($"Quest#{gameObject->EventHandler->Info.EventId.EntryId + 0x10000u}");
 
                         if (_excelService.TryGetRow<Quest>(gameObject->EventHandler->Info.EventId.EntryId + 0x10000u, out var quest) && !quest.Name.IsEmpty)
                         {
                             ImGuiUtils.SameLineSpace();
-                            ImGui.TextUnformatted($"({quest.Name})");
+                            ImGui.Text($"({quest.Name})");
                         }
                         break;
 
                     case EventHandlerContent.CustomTalk:
-                        ImGui.TextUnformatted($"CustomTalk#{gameObject->EventHandler->Info.EventId.Id}");
+                        ImGui.Text($"CustomTalk#{gameObject->EventHandler->Info.EventId.Id}");
 
                         if (_excelService.TryGetRow<CustomTalk>(gameObject->EventHandler->Info.EventId.Id, out var customTalk) && !customTalk.Name.IsEmpty)
                         {
                             ImGuiUtils.SameLineSpace();
-                            ImGui.TextUnformatted($"({customTalk.Name})");
+                            ImGui.Text($"({customTalk.Name})");
                         }
                         break;
 
                     default:
                         if (string.IsNullOrEmpty(Enum.GetName(gameObject->EventHandler->Info.EventId.ContentId)))
-                            ImGui.TextUnformatted($"0x{(ushort)gameObject->EventHandler->Info.EventId.ContentId:X4}");
+                            ImGui.Text($"0x{(ushort)gameObject->EventHandler->Info.EventId.ContentId:X4}");
                         else
-                            ImGui.TextUnformatted($"{gameObject->EventHandler->Info.EventId.ContentId}");
+                            ImGui.Text($"{gameObject->EventHandler->Info.EventId.ContentId}");
                         break;
                 }
             }

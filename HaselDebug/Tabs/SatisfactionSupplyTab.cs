@@ -5,7 +5,6 @@ using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
@@ -24,14 +23,14 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
     {
         var satisfactionSupply = SatisfactionSupplyManager.Instance();
 
-        using var table = ImRaii.Table("SatisfactionSupply", 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("SatisfactionSupply"u8, 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Satisfaction", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Rank", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Used Allowance", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Satisfaction"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Rank"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Used Allowance"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableHeadersRow();
 
         foreach (var row in _excelService.GetSheet<SatisfactionNpc>())
@@ -44,7 +43,7 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(row.RowId.ToString());
+            ImGui.Text(row.RowId.ToString());
 
             ImGui.TableNextColumn(); // Name
             _debugRenderer.DrawIcon((uint)row.RankParams[rank].ImageId);
@@ -57,7 +56,7 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
                 {
                     ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
                     using var tooltip = ImRaii.Tooltip();
-                    ImGui.TextUnformatted($"Teleport to: {_textService.GetPlaceName(aetheryte.PlaceName.RowId)}");
+                    ImGui.Text($"Teleport to: {_textService.GetPlaceName(aetheryte.PlaceName.RowId)}");
                 }
                 if (clicked)
                 {
@@ -66,17 +65,17 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
             }
             else
             {
-                ImGui.TextUnformatted(_textService.GetENpcResidentName(row.Npc.RowId));
+                ImGui.Text(_textService.GetENpcResidentName(row.Npc.RowId));
             }
 
             ImGui.TableNextColumn(); // Satisfaction
-            ImGui.TextUnformatted($"{satisfactionSupply->Satisfaction[index]}/{row.SatisfactionNpcParams[rank].SatisfactionRequired}");
+            ImGui.Text($"{satisfactionSupply->Satisfaction[index]}/{row.SatisfactionNpcParams[rank].SatisfactionRequired}");
 
             ImGui.TableNextColumn(); // Rank
-            ImGui.TextUnformatted(rank.ToString());
+            ImGui.Text(rank.ToString());
 
             ImGui.TableNextColumn(); // UsedAllowance
-            ImGui.TextUnformatted(satisfactionSupply->UsedAllowances[index].ToString());
+            ImGui.Text(satisfactionSupply->UsedAllowances[index].ToString());
         }
     }
 }

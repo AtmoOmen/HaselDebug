@@ -4,8 +4,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using HaselDebug.Services;
-using ImGuiNET;
+using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -40,13 +39,10 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
         Rows = RaptureAtkModule.Instance()->AddonNames.Select((name, index) => new AddonNameEntry(index, name.ToString())).ToList();
     }
 
-    [RegisterTransient, AutoConstruct]
-    public partial class IndexColumn : ColumnNumber<AddonNameEntry>
+    [RegisterTransient]
+    public class IndexColumn : ColumnNumber<AddonNameEntry>
     {
-        private readonly DebugRenderer _debugRenderer;
-
-        [AutoPostConstruct]
-        public void Initialize()
+        public IndexColumn()
         {
             Label = "Index";
             Flags = ImGuiTableColumnFlags.WidthFixed;
@@ -60,17 +56,14 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
 
         public override void DrawColumn(AddonNameEntry row)
         {
-            _debugRenderer.DrawCopyableText(ToName(row));
+            ImGuiUtilsEx.DrawCopyableText(ToName(row));
         }
     }
 
-    [RegisterTransient, AutoConstruct]
-    public partial class NameColumn : ColumnString<AddonNameEntry>
+    [RegisterTransient]
+    public class NameColumn : ColumnString<AddonNameEntry>
     {
-        private readonly DebugRenderer _debugRenderer;
-
-        [AutoPostConstruct]
-        public void Initialize()
+        public NameColumn()
         {
             Label = "Name";
         }
@@ -82,7 +75,7 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
 
         public override unsafe void DrawColumn(AddonNameEntry row)
         {
-            _debugRenderer.DrawCopyableText(ToName(row));
+            ImGuiUtilsEx.DrawCopyableText(ToName(row));
 
             if (ImGui.IsItemClicked())
             {

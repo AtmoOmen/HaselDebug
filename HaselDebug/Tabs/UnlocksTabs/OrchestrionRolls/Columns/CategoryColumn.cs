@@ -1,7 +1,5 @@
-using Dalamud.Utility;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.OrchestrionRolls.Columns;
 
@@ -18,12 +16,12 @@ public partial class CategoryColumn : ColumnString<OrchestrionRollEntry>
     }
 
     public override string ToName(OrchestrionRollEntry entry)
-        => entry.UIParamRow.OrchestrionCategory.Value.Name.ExtractText().StripSoftHyphen();
+        => entry.UIParamRow.OrchestrionCategory.Value.Name.ToString();
 
     public override void DrawColumn(OrchestrionRollEntry entry)
     {
         _debugRenderer.DrawIcon(entry.UIParamRow.OrchestrionCategory.Value.Icon);
-        ImGui.TextUnformatted(ToName(entry));
+        ImGui.Text(ToName(entry));
     }
 
     public override int Compare(OrchestrionRollEntry a, OrchestrionRollEntry b)

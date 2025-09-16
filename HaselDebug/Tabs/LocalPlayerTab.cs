@@ -4,7 +4,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -18,7 +17,7 @@ public unsafe partial class LocalPlayerTab : DebugTab
         var localPlayer = Control.GetLocalPlayer();
         if (localPlayer == null)
         {
-            ImGui.TextUnformatted("LocalPlayer unavailable");
+            ImGui.Text("LocalPlayer unavailable"u8);
             return;
         }
 

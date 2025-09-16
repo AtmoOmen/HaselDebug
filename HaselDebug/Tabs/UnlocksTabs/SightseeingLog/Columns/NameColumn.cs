@@ -4,7 +4,6 @@ using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.SightseeingLog.Columns;
 
@@ -23,7 +22,7 @@ public partial class NameColumn : ColumnString<AdventureEntry>
     }
 
     public override string ToName(AdventureEntry entry)
-        => entry.Row.Name.ExtractText();
+        => entry.Row.Name.ToString();
 
     public override unsafe void DrawColumn(AdventureEntry entry)
     {
@@ -41,7 +40,7 @@ public partial class NameColumn : ColumnString<AdventureEntry>
         }
         else
         {
-            ImGui.TextUnformatted(ToName(entry));
+            ImGui.Text(ToName(entry));
         }
 
         if (_textureProvider.TryGetFromGameIcon(entry.Row.IconDiscovered, out var imageTex) && imageTex.TryGetWrap(out var image, out _))

@@ -12,7 +12,6 @@ using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Windows;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -26,6 +25,7 @@ public unsafe partial class AddonInspectorTab : DebugTab
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly WindowManager _windowManager;
+    private readonly AddonObserver _addonObserver;
     private readonly AtkDebugRenderer _atkDebugRenderer;
 
     private ushort _selectedAddonId = 0;
@@ -35,8 +35,9 @@ public unsafe partial class AddonInspectorTab : DebugTab
     private ImGuiSortDirection _sortDirection = ImGuiSortDirection.Ascending;
     private string _addonNameSearchTerm = string.Empty;
     private bool _showPicker;
+    private HashSet<Pointer<AtkResNode>> _lastHoveredNodePtrs = [];
+    private List<Pointer<AtkResNode>>? _nodePath = null;
     private int _nodePickerSelectionIndex;
-    private Vector2 _lastMousePos;
 
     public override bool DrawInChild => false;
 
@@ -47,7 +48,9 @@ public unsafe partial class AddonInspectorTab : DebugTab
 
         DrawAddonList();
         ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
-        _atkDebugRenderer.DrawAddon(_selectedAddonId, _selectedAddonName);
+        _atkDebugRenderer.DrawAddon(_selectedAddonId, _selectedAddonName, _nodePath);
+        if (_nodePath != null)
+            _nodePath = null;
         DrawNodePicker();
     }
 
@@ -68,10 +71,10 @@ public unsafe partial class AddonInspectorTab : DebugTab
             _nodePickerSelectionIndex = 0;
         }
 
-        using var table = ImRaii.Table("AddonsTable", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable, new Vector2(-1));
+        using var table = ImRaii.Table("AddonsTable"u8, 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable, new Vector2(-1));
         if (!table) return;
 
-        ImGui.TableSetupColumn("Id", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.PreferSortDescending, 40);
+        ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.PreferSortDescending, 40);
         ImGui.TableSetupColumn("Name");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -132,7 +135,7 @@ public unsafe partial class AddonInspectorTab : DebugTab
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Id
-            ImGui.TextUnformatted(addonId.ToString());
+            ImGui.Text(addonId.ToString());
 
             ImGui.TableNextColumn(); // Name
             using (ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled), !unitBase->IsVisible))
@@ -186,7 +189,7 @@ public unsafe partial class AddonInspectorTab : DebugTab
                     Label = _textService.Translate("ContextMenu.TabPopout"),
                     ClickCallback = () =>
                     {
-                        _windowManager.Open(new AddonInspectorWindow(_serviceProvider, _atkDebugRenderer)
+                        _windowManager.Open(new AddonInspectorWindow(_windowManager, _textService, _addonObserver, _atkDebugRenderer)
                         {
                             AddonId = addonId,
                             AddonName = addonName
@@ -229,6 +232,8 @@ public unsafe partial class AddonInspectorTab : DebugTab
         var nodeCount = 0;
         var bounds = stackalloc FFXIVClientStructs.FFXIV.Common.Math.Bounds[1];
 
+        var currentHoveredNodePtrs = new HashSet<Pointer<AtkResNode>>();
+
         foreach (AtkUnitBase* unitBase in allUnitsList)
         {
             unitBase->GetWindowBounds(bounds);
@@ -246,6 +251,8 @@ public unsafe partial class AddonInspectorTab : DebugTab
                 if (!bounds->ContainsPoint((int)ImGui.GetMousePos().X, (int)ImGui.GetMousePos().Y))
                     continue;
 
+                currentHoveredNodePtrs.Add(node);
+
                 if (!hoveredDepthLayerAddonNodes.TryGetValue(unitBase->DepthLayer, out var addonNodes))
                     hoveredDepthLayerAddonNodes.Add(unitBase->DepthLayer, addonNodes = []);
 
@@ -258,19 +265,22 @@ public unsafe partial class AddonInspectorTab : DebugTab
             }
         }
 
+        // Only reset selection index if hovered nodes changed
+        if (!currentHoveredNodePtrs.SetEquals(_lastHoveredNodePtrs))
+        {
+            _nodePickerSelectionIndex = 0;
+            _lastHoveredNodePtrs = currentHoveredNodePtrs;
+        }
+
         if (nodeCount == 0)
         {
             _showPicker = false;
+            _lastHoveredNodePtrs.Clear();
             return;
         }
 
         ImGui.SetNextWindowPos(Vector2.Zero);
         ImGui.SetNextWindowSize(ImGui.GetMainViewport().Size);
-
-        var mousePos = ImGui.GetMousePos();
-        var mouseMoved = _lastMousePos != mousePos;
-        if (mouseMoved)
-            _nodePickerSelectionIndex = 0;
 
         if (!ImGui.Begin("NodePicker", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBackground))
             return;
@@ -280,12 +290,12 @@ public unsafe partial class AddonInspectorTab : DebugTab
         var nodeIndex = 0;
         foreach (var (depthLayer, addons) in hoveredDepthLayerAddonNodes)
         {
-            ImGui.TextUnformatted($"Depth Layer {depthLayer}:");
+            ImGui.Text($"Depth Layer {depthLayer}:");
 
             using var indent = ImRaii.PushIndent();
             foreach (var (unitBase, nodes) in addons)
             {
-                ImGui.TextUnformatted($"{unitBase.Value->NameString}:");
+                ImGui.Text($"{unitBase.Value->NameString}:");
 
                 using var indent2 = ImRaii.PushIndent();
 
@@ -297,7 +307,7 @@ public unsafe partial class AddonInspectorTab : DebugTab
                     if (_nodePickerSelectionIndex == nodeIndex)
                     {
                         using (ImRaii.PushFont(UiBuilder.IconFont))
-                            ImGui.TextUnformatted(FontAwesomeIcon.CaretRight.ToIconString());
+                            ImGui.Text(FontAwesomeIcon.CaretRight.ToIconString());
                         ImGui.SameLine(0, 0);
 
                         ImGui.GetForegroundDrawList().AddRectFilled(
@@ -310,14 +320,24 @@ public unsafe partial class AddonInspectorTab : DebugTab
                             _selectedAddonId = unitBase.Value->Id;
                             _selectedAddonName = unitBase.Value->NameString;
 
+                            _nodePath ??= [];
+                            _nodePath.Clear();
+                            var current = node;
+                            while (current != null)
+                            {
+                                _nodePath.Insert(0, current);
+                                current = current->ParentNode;
+                            }
+
                             _nodePickerSelectionIndex = 0;
                             _showPicker = false;
+                            _lastHoveredNodePtrs.Clear();
                         }
                     }
 
                     if ((int)node->Type < 1000)
                     {
-                        ImGui.TextUnformatted($"[0x{(nint)node:X}] [{node->NodeId}] {node->Type} Node");
+                        ImGui.Text($"[0x{(nint)node:X}] [{node->NodeId}] {node->Type} Node");
                     }
                     else
                     {
@@ -325,7 +345,7 @@ public unsafe partial class AddonInspectorTab : DebugTab
                         var componentInfo = compNode->Component->UldManager;
                         var objectInfo = (AtkUldComponentInfo*)componentInfo.Objects;
                         if (objectInfo == null) continue;
-                        ImGui.TextUnformatted($"[0x{(nint)node:X}] [{node->NodeId}] {objectInfo->ComponentType} Component Node");
+                        ImGui.Text($"[0x{(nint)node:X}] [{node->NodeId}] {objectInfo->ComponentType} Component Node");
                     }
 
                     nodeIndex++;
@@ -338,9 +358,6 @@ public unsafe partial class AddonInspectorTab : DebugTab
             _nodePickerSelectionIndex = nodeCount - 1;
         if (_nodePickerSelectionIndex > nodeCount - 1)
             _nodePickerSelectionIndex = 0;
-
-        if (mouseMoved)
-            _lastMousePos = mousePos;
 
         ImGui.End();
     }

@@ -1,9 +1,7 @@
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Recipes.Columns;
@@ -21,7 +19,7 @@ public partial class NameColumn : ColumnString<Recipe>
     }
 
     public override string ToName(Recipe row)
-        => _textService.GetItemName(row.ItemResult.RowId).ExtractText().StripSoftHyphen();
+        => _textService.GetItemName(row.ItemResult.RowId).ToString();
 
     public override unsafe void DrawColumn(Recipe row)
     {

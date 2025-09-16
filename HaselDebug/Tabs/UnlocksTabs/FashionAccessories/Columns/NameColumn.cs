@@ -7,7 +7,6 @@ using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.FashionAccessories.Columns;
@@ -53,7 +52,7 @@ public partial class NameColumn : ColumnString<Ornament>
             }
             else
             {
-                ImGui.TextUnformatted(name);
+                ImGui.Text(name);
             }
         }
 

@@ -4,7 +4,6 @@ using HaselCommon.Graphics;
 using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
@@ -20,10 +19,10 @@ public unsafe partial class UIColorTab : DebugTab
 
     public override void Draw()
     {
-        using var table = ImRaii.Table("UIColorTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("UIColorTable"u8, 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Id", ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed, 30);
         ImGui.TableSetupColumn(_textService.GetAddonText(4232)); // Dark
         ImGui.TableSetupColumn(_textService.GetAddonText(4233)); // Light
         ImGui.TableSetupColumn(_textService.GetAddonText(4234)); // Classic FF
@@ -36,7 +35,7 @@ public unsafe partial class UIColorTab : DebugTab
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(row.RowId.ToString());
+            ImGui.Text(row.RowId.ToString());
 
             ImGui.TableNextColumn();
             var color = (Vector4)Color.FromABGR(row.Dark);

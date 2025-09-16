@@ -1,20 +1,42 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
+using HaselDebug.Utils;
+using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
 
 [RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
 public unsafe partial class InputTab : DebugTab
 {
+    private readonly ExcelService _excelService;
+    private readonly Dictionary<InputId, ConfigKey> _inputKey2ConfigKey = [];
+    private bool _initialized;
+
     public override bool DrawInChild => true;
+
+    private void Initialize()
+    {
+        foreach (var inputId in Enum.GetValues<InputId>())
+        {
+            if (_excelService.TryFindRow<ConfigKey>(row => row.Label.ToString() == Enum.GetName(inputId)?.ToString(), out var configKeyRow))
+                _inputKey2ConfigKey[inputId] = configKeyRow;
+        }
+    }
 
     public override void Draw()
     {
+        if (!_initialized)
+        {
+            Initialize();
+            _initialized = true;
+        }
+
         using var hostchild = ImRaii.Child("InputTabChild", new Vector2(-1), false, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
         if (!hostchild) return;
 
@@ -26,45 +48,73 @@ public unsafe partial class InputTab : DebugTab
         DrawKeyState();
     }
 
-    private void DrawKeyState()
+    private void DrawInputs()
     {
-        using var tab = ImRaii.TabItem("KeyState states");
+        using var tab = ImRaii.TabItem("Inputs");
         if (!tab) return;
 
-        using var table = ImRaii.Table("KeyStateTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("InputsTable"u8, 11, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Hideable | ImGuiTableFlags.Reorderable);
         if (!table) return;
 
-        ImGui.TableSetupColumn("SeVirtualKey", ImGuiTableColumnFlags.WidthFixed, 300);
-        ImGui.TableSetupColumn("Press", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Down", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Held", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Released", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 30);
+        ImGui.TableSetupColumn("InputId"u8, ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Display Name"u8, ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Binding 1"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Binding 2"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Controller Binding 1"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Controller Binding 2"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Press"u8, ImGuiTableColumnFlags.WidthFixed, 60);
+        ImGui.TableSetupColumn("Down"u8, ImGuiTableColumnFlags.WidthFixed, 60);
+        ImGui.TableSetupColumn("Held"u8, ImGuiTableColumnFlags.WidthFixed, 60);
+        ImGui.TableSetupColumn("Released"u8, ImGuiTableColumnFlags.WidthFixed, 60);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
         var uiInputData = UIInputData.Instance();
 
-        foreach (var seVirtualKey in Enum.GetValues<SeVirtualKey>())
+        for (var i = 0; i < uiInputData->NumKeybinds; i++)
         {
-            var isPress = uiInputData->IsKeyPressed(seVirtualKey);
-            var isDown = uiInputData->IsKeyDown(seVirtualKey);
-            var isReleased = uiInputData->IsKeyReleased(seVirtualKey);
-            var isHeld = uiInputData->IsKeyHeld(seVirtualKey);
-
-            if (!isPress && !isDown && !isReleased && !isHeld)
-                continue;
+            var keybind = uiInputData->GetKeybind(i);
+            var isPress = uiInputData->IsInputIdPressed((InputId)i);
+            var isDown = uiInputData->IsInputIdDown((InputId)i);
+            var isHeld = uiInputData->IsInputIdHeld((InputId)i);
+            var isReleased = uiInputData->IsInputIdReleased((InputId)i);
 
             ImGui.TableNextRow();
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{seVirtualKey}");
+            ImGuiUtilsEx.DrawCopyableText($"{i}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isPress}");
+            ImGuiUtilsEx.DrawCopyableText($"{(InputId)i}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isDown}");
+            if (_inputKey2ConfigKey.TryGetValue((InputId)i, out var configKeyRow))
+                ImGuiUtilsEx.DrawCopyableText(configKeyRow.Text.ToString());
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isHeld}");
+            DrawKeybind(ref keybind->KeySettings[0]);
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isReleased}");
+            DrawKeybind(ref keybind->KeySettings[1]);
+
+            ImGui.TableNextColumn();
+            DrawKeybind(ref keybind->GamepadSettings[0]);
+
+            ImGui.TableNextColumn();
+            DrawKeybind(ref keybind->GamepadSettings[1]);
+
+            ImGui.TableNextColumn();
+            ImGui.Text($"{isPress}");
+
+            ImGui.TableNextColumn();
+            ImGui.Text($"{isDown}");
+
+            ImGui.TableNextColumn();
+            ImGui.Text($"{isHeld}");
+
+            ImGui.TableNextColumn();
+            ImGui.Text($"{isReleased}");
         }
     }
 
@@ -73,14 +123,14 @@ public unsafe partial class InputTab : DebugTab
         using var tab = ImRaii.TabItem("InputId states");
         if (!tab) return;
 
-        using var table = ImRaii.Table("FnStateTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY);
+        using var table = ImRaii.Table("FnStateTable"u8, 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY);
         if (!table) return;
 
-        ImGui.TableSetupColumn("InputId", ImGuiTableColumnFlags.WidthFixed, 300);
-        ImGui.TableSetupColumn("Press", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Down", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Held", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Released", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("InputId"u8, ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Press"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Down"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Held"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Released"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -97,58 +147,95 @@ public unsafe partial class InputTab : DebugTab
                 continue;
 
             ImGui.TableNextRow();
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{inputId}");
+            ImGuiUtilsEx.DrawCopyableText($"{inputId}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isPress}");
+            ImGui.Text($"{isPress}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isDown}");
+            ImGui.Text($"{isDown}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isHeld}");
+            ImGui.Text($"{isHeld}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isReleased}");
+            ImGui.Text($"{isReleased}");
         }
     }
 
-    private void DrawInputs()
+    private void DrawKeyState()
     {
-        using var tab = ImRaii.TabItem("Inputs");
+        using var tab = ImRaii.TabItem("KeyState states");
         if (!tab) return;
 
-        using var table = ImRaii.Table("InputsTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY);
+        using var table = ImRaii.Table("KeyStateTable"u8, 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("InputId", ImGuiTableColumnFlags.WidthFixed, 300);
-        ImGui.TableSetupColumn("Press", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Down", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Held", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Released", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("SeVirtualKey"u8, ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Press"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Down"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Held"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Released"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
         var uiInputData = UIInputData.Instance();
 
-        for (var i = 0; i < 675; i++)
+        foreach (var seVirtualKey in Enum.GetValues<SeVirtualKey>())
         {
-            var isPress = uiInputData->IsInputIdPressed((InputId)i);
-            var isDown = uiInputData->IsInputIdDown((InputId)i);
-            var isHeld = uiInputData->IsInputIdHeld((InputId)i);
-            var isReleased = uiInputData->IsInputIdReleased((InputId)i);
+            if ((int)seVirtualKey >= uiInputData->KeyboardInputs.KeyState.Length)
+                break;
+
+            var isPress = uiInputData->IsKeyPressed(seVirtualKey);
+            var isDown = uiInputData->IsKeyDown(seVirtualKey);
+            var isReleased = uiInputData->IsKeyReleased(seVirtualKey);
+            var isHeld = uiInputData->IsKeyHeld(seVirtualKey);
+
+            if (!isPress && !isDown && !isReleased && !isHeld)
+                continue;
 
             ImGui.TableNextRow();
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{i}");
+            ImGuiUtilsEx.DrawCopyableText($"{seVirtualKey}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{(InputId)i}");
+            ImGui.Text($"{isPress}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isPress}");
+            ImGui.Text($"{isDown}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isDown}");
+            ImGui.Text($"{isHeld}");
+
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isHeld}");
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{isReleased}");
+            ImGui.Text($"{isReleased}");
         }
+    }
+
+    private static void DrawKeybind(ref KeySetting keySetting)
+    {
+        if (keySetting.Key == SeVirtualKey.NO_KEY)
+        {
+            ImGui.Text("-"u8);
+            return;
+        }
+
+        if ((int)keySetting.Key < 167)
+        {
+            if (keySetting.KeyModifier == KeyModifierFlag.None)
+                ImGuiUtilsEx.DrawCopyableText($"{keySetting.Key}");
+            else
+                ImGuiUtilsEx.DrawCopyableText($"{keySetting.KeyModifier}+{keySetting.Key}");
+
+            return;
+        }
+
+        if (keySetting.GamepadModifier == GamepadModifierFlag.None)
+            ImGuiUtilsEx.DrawCopyableText($"{keySetting.Key}");
+        else
+            ImGuiUtilsEx.DrawCopyableText($"{keySetting.GamepadModifier}+{keySetting.Key}");
     }
 }

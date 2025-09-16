@@ -13,7 +13,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Lumina.Text.ReadOnly;
@@ -33,12 +32,12 @@ public unsafe partial class ExcelTab : DebugTab
     private CancellationTokenSource? _filterCTS;
 
     private IExcelSheetTab[] _excelTabs;
+    private bool _isInitialized;
 
     public string SearchTerm { get; private set; } = string.Empty;
     public ClientLanguage SelectedLanguage { get; private set; }
 
-    [AutoPostConstruct]
-    public void Initialize()
+    private void Initialize()
     {
         SelectedLanguage = _languageProvider.ClientLanguage;
 
@@ -74,6 +73,12 @@ public unsafe partial class ExcelTab : DebugTab
     public override bool DrawInChild => false;
     public override void Draw()
     {
+        if (!_isInitialized)
+        {
+            Initialize();
+            _isInitialized = true;
+        }
+
         using var hostChild = ImRaii.Child("Host", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - LanguageSelectorWidth * ImGuiHelpers.GlobalScale - ImGui.GetStyle().ItemSpacing.X);
@@ -189,10 +194,10 @@ public class ExcelSheetTab<T> : IExcelSheetTab where T : struct, IExcelRow<T>
 
         using var contentChild = ImRaii.Child("Content", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
 
-        using var table = ImRaii.Table("RowTable", 1 + Columns.Length, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("RowTable"u8, 1 + Columns.Length, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("RowId", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("RowId"u8, ImGuiTableColumnFlags.WidthFixed, 40);
 
         foreach (var column in Columns)
             ImGui.TableSetupColumn(column.Name, column.TableColumnFlags, column.TableColumnWidth);
@@ -208,7 +213,7 @@ public class ExcelSheetTab<T> : IExcelSheetTab where T : struct, IExcelRow<T>
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn(); // RowId
-        ImGui.TextUnformatted(row.RowId.ToString());
+        ImGui.Text(row.RowId.ToString());
 
         foreach (var column in Columns)
         {
@@ -235,7 +240,7 @@ public class ExcelSheetStringColumn<T> : ExcelSheetColumn<T> where T : struct, I
 
         MatchesSearchTerm = (row) =>
         {
-            return stringGetter(row).ToString().Contains(excelTab.SearchTerm, StringComparison.InvariantCultureIgnoreCase);
+            return stringGetter(row).ToMacroString().Contains(excelTab.SearchTerm, StringComparison.InvariantCultureIgnoreCase);
         };
 
         Draw = (row) =>

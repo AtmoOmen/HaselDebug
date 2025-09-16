@@ -1,7 +1,6 @@
 using Dalamud.Plugin.Services;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.SightseeingLog.Columns;
 
@@ -34,7 +33,7 @@ public partial class ZoneColumn : ColumnString<AdventureEntry>
             {
                 var direction = distance > 1 ? " " + _mapService.GetCompassDirection(level) : string.Empty;
                 ImGui.SameLine(0, 0);
-                ImGui.TextUnformatted($" ({distance:0}y{direction})");
+                ImGui.Text($" ({distance:0}y{direction})");
             }
         }
     }

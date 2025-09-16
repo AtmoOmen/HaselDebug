@@ -6,13 +6,11 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.ImGuiSeStringRenderer;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using HaselCommon.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 using Lumina.Data;
 using Lumina.Excel.Sheets;
 using Lumina.Text.Expressions;
@@ -118,7 +116,7 @@ public unsafe partial class DebugRenderer
     {
         if (address == 0)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -127,7 +125,7 @@ public unsafe partial class DebugRenderer
         var str = (Utf8String*)address;
         if (str->StringPtr == null)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -138,7 +136,7 @@ public unsafe partial class DebugRenderer
     {
         if (ptr == null)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -180,7 +178,7 @@ public unsafe partial class DebugRenderer
         }
         else
         {
-            var text = rosss.ToString();
+            var text = rosss.ToMacroString();
 
             using (ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector(), nodeOptions.RenderSeString))
                 clicked = ImGui.Selectable(text + nodeOptions.GetKey("SeStringSelectable"));
@@ -198,11 +196,12 @@ public unsafe partial class DebugRenderer
         if (clicked)
         {
             var str = new ReadOnlySeString(rosss.Data.ToArray());
-            var windowTitle = nodeOptions.Title ?? (nodeOptions.SeStringTitle ?? str).ToString();
-            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_serviceProvider)
+            var windowTitle = nodeOptions.Title ?? (nodeOptions.SeStringTitle ?? str).ToMacroString();
+            var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
+            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _addonObserver, _serviceProvider)
             {
                 String = str,
-                Language = nodeOptions.Language,
+                Language = language,
                 WindowName = windowTitle,
             });
         }
@@ -252,15 +251,15 @@ public unsafe partial class DebugRenderer
             using var table = ImRaii.Table($"##Payload{payloadIdx}_{payload.GetHashCode()}Table", 2);
             if (!table) return;
 
-            ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Tree", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Label"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+            ImGui.TableSetupColumn("Tree"u8, ImGuiTableColumnFlags.WidthStretch);
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(payload.Type == ReadOnlySePayloadType.Text ? "Text" : "ToString()");
+            ImGui.Text(payload.Type == ReadOnlySePayloadType.Text ? "Text" : "ToString()");
             ImGui.TableNextColumn();
             var text = payload.ToString();
-            DrawCopyableText($"\"{text}\"", text);
+            ImGuiUtilsEx.DrawCopyableText($"\"{text}\"", text);
 
             if (payload.Type != ReadOnlySePayloadType.Macro)
                 continue;
@@ -300,13 +299,13 @@ public unsafe partial class DebugRenderer
 
         ImGui.TableNextColumn();
         var expressionName = GetExpressionName(macroCode, subType, idx, expr);
-        ImGui.TextUnformatted($"[{idx}] " + (string.IsNullOrEmpty(expressionName) ? $"Expr {idx}" : expressionName));
+        ImGui.Text($"[{idx}] " + (string.IsNullOrEmpty(expressionName) ? $"Expr {idx}" : expressionName));
 
         ImGui.TableNextColumn();
 
         if (expr.Body.IsEmpty)
         {
-            ImGui.TextUnformatted("(?)");
+            ImGui.Text("(?)"u8);
             return;
         }
 
@@ -314,13 +313,13 @@ public unsafe partial class DebugRenderer
         {
             if (macroCode is MacroCode.Icon or MacroCode.Icon2 && idx == 0)
             {
-                _textureService.DrawGfd(u32, ImGui.GetTextLineHeight());
+                _gfdService.Draw(u32, ImGui.GetTextLineHeight());
                 ImGui.SameLine();
             }
 
-            DrawCopyableText(u32.ToString());
+            ImGuiUtilsEx.DrawCopyableText(u32.ToString());
             ImGui.SameLine();
-            DrawCopyableText($"0x{u32:X}");
+            ImGuiUtilsEx.DrawCopyableText($"0x{u32:X}");
 
             if (macroCode == MacroCode.Link && idx == 0)
             {
@@ -331,7 +330,7 @@ public unsafe partial class DebugRenderer
                 if (!string.IsNullOrEmpty(name))
                 {
                     ImGui.SameLine();
-                    ImGui.TextUnformatted(name);
+                    ImGui.Text(name);
                 }
             }
 
@@ -352,7 +351,7 @@ public unsafe partial class DebugRenderer
                     _ => typeof(EnglishArticleType)
                 };
                 ImGui.SameLine();
-                ImGui.TextUnformatted(Enum.GetName(articleTypeEnumType, u32));
+                ImGui.Text(Enum.GetName(articleTypeEnumType, u32));
             }
 
             if (macroCode is MacroCode.Fixed && subType != null && fixedType != null && fixedType is 100 or 200 && subType == 5 && idx == 2)
@@ -370,34 +369,34 @@ public unsafe partial class DebugRenderer
                 {
                     case LinkMacroPayloadType.Item:
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(_textService.GetItemName(u32).ExtractText().StripSoftHyphen());
+                        ImGui.Text(_textService.GetItemName(u32).ToString());
                         break;
 
                     case LinkMacroPayloadType.Quest:
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(_textService.GetQuestName(u32));
+                        ImGui.Text(_textService.GetQuestName(u32));
                         break;
 
                     case LinkMacroPayloadType.Achievement when _dataManager.GetExcelSheet<Achievement>(_languageProvider.ClientLanguage).TryGetRow(u32, out var achievementRow):
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(achievementRow.Name.ExtractText());
+                        ImGui.Text(achievementRow.Name.ToString());
                         break;
 
                     case LinkMacroPayloadType.HowTo when _dataManager.GetExcelSheet<HowTo>(_languageProvider.ClientLanguage).TryGetRow(u32, out var howToRow):
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(howToRow.Name.ExtractText());
+                        ImGui.Text(howToRow.Name.ToString());
                         break;
 
                     case LinkMacroPayloadType.Status when _dataManager.GetExcelSheet<Status>(_languageProvider.ClientLanguage).TryGetRow(u32, out var statusRow):
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(statusRow.Name.ExtractText());
+                        ImGui.Text(statusRow.Name.ToString());
                         break;
 
                     case LinkMacroPayloadType.AkatsukiNote when
                         _dataManager.GetSubrowExcelSheet<AkatsukiNote>(_languageProvider.ClientLanguage).TryGetRow(u32, out var akatsukiNoteRow) &&
-                        _dataManager.GetExcelSheet<AkatsukiNoteString>(_languageProvider.ClientLanguage).TryGetRow((uint)akatsukiNoteRow[0].Unknown2, out var akatsukiNoteStringRow):
+                        akatsukiNoteRow[0].ListName.IsValid:
                         ImGui.SameLine();
-                        ImGui.TextUnformatted(akatsukiNoteStringRow.Unknown0.ExtractText());
+                        ImGui.Text(akatsukiNoteRow[0].ListName.Value.Text.ToString());
                         break;
                 }
             }
@@ -410,7 +409,7 @@ public unsafe partial class DebugRenderer
         if (expr.TryGetString(out var s))
         {
             DrawSeString(s, false, nodeOptions with { DefaultOpen = true });
-            // ImGui.TextUnformatted($"\"{s.ToString().Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+            // ImGui.Text($"\"{s.ToString().Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
             return;
         }
 
@@ -418,11 +417,11 @@ public unsafe partial class DebugRenderer
         {
             if (((ExpressionType)exprType).GetNativeName() is { } nativeName)
             {
-                ImGui.TextUnformatted(nativeName);
+                ImGui.Text(nativeName);
                 return;
             }
 
-            ImGui.TextUnformatted($"?x{exprType:X02}");
+            ImGui.Text($"?x{exprType:X02}");
             return;
         }
 
@@ -430,7 +429,7 @@ public unsafe partial class DebugRenderer
         {
             if (((ExpressionType)exprType).GetNativeName() is { } nativeName)
             {
-                ImGui.TextUnformatted($"{nativeName}({e1.ToString()})");
+                ImGui.Text($"{nativeName}({e1.ToString()})");
                 return;
             }
 
@@ -441,7 +440,7 @@ public unsafe partial class DebugRenderer
         {
             if (((ExpressionType)exprType).GetNativeName() is { } nativeName)
             {
-                ImGui.TextUnformatted($"{e1.ToString()} {nativeName} {e2.ToString()}");
+                ImGui.Text($"{e1.ToString()} {nativeName} {e2.ToString()}");
                 return;
             }
 
@@ -454,7 +453,7 @@ public unsafe partial class DebugRenderer
         for (var i = 1; i < expr.Body.Length; i++)
             sb.Append($" {expr.Body[i]:X02}");
         sb.Append(')');
-        ImGui.TextUnformatted(sb.ToString());
+        ImGui.Text(sb.ToString());
     }
 
     private string GetExpressionName(MacroCode macroCode, uint? subType, int idx, ReadOnlySeExpressionSpan expr)

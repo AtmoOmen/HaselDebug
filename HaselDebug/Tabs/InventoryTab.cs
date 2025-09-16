@@ -1,18 +1,19 @@
 using System.Numerics;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Utility;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.Game.WKS;
 using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 using Lumina.Text;
+using ItemUtil = Dalamud.Utility.ItemUtil;
 
 namespace HaselDebug.Tabs;
 
@@ -24,6 +25,7 @@ public unsafe partial class InventoryTab : DebugTab
     private readonly ExcelService _excelService;
     private readonly ItemService _itemService;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
+    private readonly ISeStringEvaluator _seStringEvaluator;
 
     private InventoryType? _selectedInventoryType = InventoryType.Inventory1;
 
@@ -57,11 +59,11 @@ public unsafe partial class InventoryTab : DebugTab
 
     private void DrawInventoryTypeList()
     {
-        using var table = ImRaii.Table("InventoryTypeTable", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
+        using var table = ImRaii.Table("InventoryTypeTable"u8, 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
         if (!table) return;
 
         ImGui.TableSetupColumn("Type");
-        ImGui.TableSetupColumn("Size", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Size"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
 
@@ -89,7 +91,7 @@ public unsafe partial class InventoryTab : DebugTab
             });
 
             ImGui.TableNextColumn(); // Size
-            ImGui.TextUnformatted(listContainer->GetSize().ToString());
+            ImGui.Text(listContainer->GetSize().ToString());
         }
     }
 
@@ -98,11 +100,11 @@ public unsafe partial class InventoryTab : DebugTab
         var container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
         using var disabled = ImRaii.Disabled(container->GetSize() == 0);
 
-        using var itemTable = ImRaii.Table("InventoryItemTable", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var itemTable = ImRaii.Table("InventoryItemTable"u8, 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!itemTable) return;
-        ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("ItemId", ImGuiTableColumnFlags.WidthFixed, 70);
-        ImGui.TableSetupColumn("Quantity", ImGuiTableColumnFlags.WidthFixed, 70);
+        ImGui.TableSetupColumn("Slot"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("ItemId"u8, ImGuiTableColumnFlags.WidthFixed, 70);
+        ImGui.TableSetupColumn("Quantity"u8, ImGuiTableColumnFlags.WidthFixed, 70);
         ImGui.TableSetupColumn("Item");
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
@@ -119,13 +121,13 @@ public unsafe partial class InventoryTab : DebugTab
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Slot
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // ItemId
-            ImGui.TextUnformatted(itemId.ToString());
+            ImGui.Text(itemId.ToString());
 
             ImGui.TableNextColumn(); // Quantity
-            ImGui.TextUnformatted(quantity.ToString());
+            ImGui.Text(quantity.ToString());
 
             ImGui.TableNextColumn(); // Item
             if (itemId != 0 && quantity != 0)
@@ -142,11 +144,19 @@ public unsafe partial class InventoryTab : DebugTab
                     .ToReadOnlySeString();
 
                 _debugRenderer.DrawIcon(_itemService.GetIconId(itemId), ItemUtil.IsHighQuality(itemId));
-                _debugRenderer.DrawPointerType(slot, typeof(InventoryItem), new NodeOptions()
+                _debugRenderer.DrawPointerType(slot, inventoryType is InventoryType.Cosmopouch1 or InventoryType.Cosmopouch2 ? typeof(WKSContentInventoryItem) : typeof(InventoryItem), new NodeOptions()
                 {
                     AddressPath = new AddressPath([(nint)inventoryType, slot->Slot]),
                     SeStringTitle = itemNameSeStr
                 });
+
+                if (itemId is 8575 or 8693 or 8694 or 8695 or 8696 or 8698 or 8699) // IsWeddingRelatedItemId
+                {
+                    var date =
+                        (slot->GetMateriaId(0) << 4 | (slot->GetMateriaGrade(0) & 0xF)) << 16 |
+                         slot->GetMateriaId(1) << 4 | (slot->GetMateriaGrade(1) & 0xF);
+                    ImGui.Text("Date: " + _seStringEvaluator.EvaluateFromAddon(1551, [date]).ToString());
+                }
             }
         }
     }
@@ -158,18 +168,18 @@ public unsafe partial class InventoryTab : DebugTab
 
         var inventoryManager = InventoryManager.Instance();
 
-        ImGui.TextUnformatted($"EmptySlotsInBag: {inventoryManager->GetEmptySlotsInBag():N0}");
-        ImGui.TextUnformatted($"Gil: {inventoryManager->GetGil():N0}");
-        ImGui.TextUnformatted($"RetainerGil: {inventoryManager->GetRetainerGil():N0}");
-        ImGui.TextUnformatted($"GoldSaucerCoin: {inventoryManager->GetGoldSaucerCoin():N0}");
-        ImGui.TextUnformatted($"WolfMarks: {inventoryManager->GetWolfMarks():N0}");
-        ImGui.TextUnformatted($"AlliedSeals: {inventoryManager->GetAlliedSeals():N0}");
-        ImGui.TextUnformatted($"CompanySeals: {inventoryManager->GetCompanySeals(PlayerState.Instance()->GrandCompany):N0}");
-        ImGui.TextUnformatted($"MaxCompanySeals: {inventoryManager->GetMaxCompanySeals(PlayerState.Instance()->GrandCompany):N0}");
+        ImGui.Text($"EmptySlotsInBag: {inventoryManager->GetEmptySlotsInBag():N0}");
+        ImGui.Text($"Gil: {inventoryManager->GetGil():N0}");
+        ImGui.Text($"RetainerGil: {inventoryManager->GetRetainerGil():N0}");
+        ImGui.Text($"GoldSaucerCoin: {inventoryManager->GetGoldSaucerCoin():N0}");
+        ImGui.Text($"WolfMarks: {inventoryManager->GetWolfMarks():N0}");
+        ImGui.Text($"AlliedSeals: {inventoryManager->GetAlliedSeals():N0}");
+        ImGui.Text($"CompanySeals: {inventoryManager->GetCompanySeals(PlayerState.Instance()->GrandCompany):N0}");
+        ImGui.Text($"MaxCompanySeals: {inventoryManager->GetMaxCompanySeals(PlayerState.Instance()->GrandCompany):N0}");
 
         foreach (var row in _excelService.GetSheet<TomestonesItem>()!)
         {
-            ImGui.TextUnformatted($"TomestoneItem #{row.RowId} ({row.Item.Value.Name}): {inventoryManager->GetTomestoneCount(row.Item.RowId):N0}");
+            ImGui.Text($"TomestoneItem #{row.RowId} ({row.Item.Value.Name}): {inventoryManager->GetTomestoneCount(row.Item.RowId):N0}");
         }
     }
 }

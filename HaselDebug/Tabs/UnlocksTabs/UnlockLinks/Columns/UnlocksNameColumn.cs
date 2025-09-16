@@ -2,7 +2,6 @@ using System.Linq;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.UnlockLinks.Columns;
 
@@ -28,7 +27,7 @@ public partial class UnlocksNameColumn : ColumnString<UnlockLinkEntry>
                 default:
                     ImGui.BeginGroup();
                     _debugRenderer.DrawIcon(unlock.IconId, noTooltip: true);
-                    _debugRenderer.DrawCopyableText(unlock.Label, noTooltip: true);
+                    ImGuiUtilsEx.DrawCopyableText(unlock.Label, noTooltip: true);
                     ImGui.EndGroup();
 
                     if (ImGui.IsItemHovered())

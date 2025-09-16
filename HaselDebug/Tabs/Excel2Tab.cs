@@ -6,7 +6,6 @@ using System.Reflection;
 using Dalamud.Game;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using HaselCommon.Extensions;
 using HaselCommon.Graphics;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
@@ -15,7 +14,6 @@ using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Text.ReadOnly;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,14 +34,14 @@ public unsafe partial class Excel2Tab : DebugTab
     private IExcelV2SheetWrapper? _sheetWrapper;
     private IExcelV2SheetWrapper? _nextSheetWrapper;
     private string _sheetNameSearchTerm = string.Empty;
+    private bool _isInitialized;
 
     public override string Title => "Excel (v2)";
 
     public string SearchTerm { get; private set; } = string.Empty;
     public ClientLanguage SelectedLanguage { get; private set; }
 
-    [AutoPostConstruct]
-    public void Initialize()
+    private void Initialize()
     {
         SelectedLanguage = _languageProvider.ClientLanguage;
 
@@ -56,10 +54,16 @@ public unsafe partial class Excel2Tab : DebugTab
     public override bool DrawInChild => false;
     public override void Draw()
     {
+        if (!_isInitialized)
+        {
+            Initialize();
+            _isInitialized = true;
+        }
+
         using var hostChild = ImRaii.Child("Host", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
         if (!hostChild) return;
 
-        ImGui.TextUnformatted("Work in progress!");
+        ImGui.Text("Work in progress!"u8);
 
         if (_nextSheetWrapper != null)
         {
@@ -105,7 +109,7 @@ public unsafe partial class Excel2Tab : DebugTab
 
         if (_sheetWrapper == null)
         {
-            ImGui.TextUnformatted("No sheet selected.");
+            ImGui.Text("No sheet selected."u8);
         }
         else
         {
@@ -124,7 +128,7 @@ public unsafe partial class Excel2Tab : DebugTab
 
         // TODO: checkbox Search Rows
 
-        using var table = ImRaii.Table("SheetTable", 1, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
+        using var table = ImRaii.Table("SheetTable"u8, 1, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
         if (!table) return;
 
         ImGui.TableSetupColumn("Name");
@@ -195,12 +199,12 @@ public partial class ExcelV2SheetWrapper<T> : IExcelV2SheetWrapper where T : str
 
     public void Draw()
     {
-        ImGui.TextUnformatted(SheetName);
+        ImGui.Text(SheetName);
         ImGui.SameLine();
 
         var count = (_table.FilteredRows ?? _table.Rows).Count;
-        ImGui.TextUnformatted($"{count} row{(count != 1 ? "s" : "")}");
-        ImGui.TextUnformatted($"IsSubrowType: {_table.IsSubrowType}");
+        ImGui.Text($"{count} row{(count != 1 ? "s" : "")}");
+        ImGui.Text($"IsSubrowType: {_table.IsSubrowType}");
 
         ImGui.SameLine();
         ShowColumnSelector();
@@ -421,7 +425,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
 
         if (value == null)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -449,7 +453,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
         if (ColumnType == typeof(RowRef))
         {
             var columnRowId = (uint)ColumnType.GetProperty("RowId")?.GetValue(value)!;
-            ImGui.TextUnformatted(columnRowId.ToString());
+            ImGui.Text(columnRowId.ToString());
             return;
         }
 
@@ -470,7 +474,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
             else
             {
                 using var disabled = ImRaii.Disabled();
-                ImGui.TextUnformatted(text);
+                ImGui.Text(text);
             }
 
             return;
@@ -493,7 +497,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
             else
             {
                 using var disabled = ImRaii.Disabled();
-                ImGui.TextUnformatted(text);
+                ImGui.Text(text);
             }
 
             return;
@@ -503,7 +507,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
         {
             var count = (int)ColumnType.GetProperty("Count")?.GetValue(value)!;
             using (Color.Grey.Push(ImGuiCol.Text))
-                ImGui.TextUnformatted($"{count} value{(count != 1 ? "s" : "")}"); // TODO: click to open
+                ImGui.Text($"{count} value{(count != 1 ? "s" : "")}"); // TODO: click to open
             return;
         }
 
@@ -513,7 +517,7 @@ public partial class ExcelV2SheetColumn<T> : ColumnString<T> where T : struct
             return;
         }
 
-        ImGui.TextUnformatted(value.ToString()); // TODO: invariant culture
+        ImGui.Text(value.ToString()); // TODO: invariant culture
     }
 
     private void OpenSheet(string sheetName, uint rowId)

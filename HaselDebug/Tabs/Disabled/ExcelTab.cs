@@ -99,10 +99,10 @@ public class ExcelTab : DebugTab
 
         // TODO: dropdown filter
 
-        using var table = ImRaii.Table("SheetListTable", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable | ImGuiTableFlags.NoSavedSettings, new Vector2(-1));
+        using var table = ImRaii.Table("SheetListTable"u8, 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Sortable | ImGuiTableFlags.NoSavedSettings, new Vector2(-1));
         if (!table) return;
 
-        ImGui.TableSetupColumn("Id", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Name");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -120,7 +120,7 @@ public class ExcelTab : DebugTab
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Id
-            ImGui.TextUnformatted(sheetId.ToString());
+            ImGui.Text(sheetId.ToString());
 
             ImGui.TableNextColumn(); // Name
 
@@ -264,26 +264,26 @@ public class ExcelTab : DebugTab
 
         if (excelSheet == null || excelSheetType == null)
         {
-            ImGui.TextUnformatted("ExcelSheet not loaded");
+            ImGui.Text("ExcelSheet not loaded"u8);
             return;
         }
 
         using var hostchild = ImRaii.Child("SheetChild", new Vector2(-1), true, ImGuiWindowFlags.NoSavedSettings);
 
-        ImGui.TextUnformatted(SelectedSheetName);
+        ImGui.Text(SelectedSheetName);
         ImGui.SameLine();
-        ImGui.TextUnformatted("\u2022");
+        ImGui.Text("\u2022"u8);
         ImGui.SameLine();
-        ImGui.TextUnformatted(string.Concat("Rows: ", excelSheetRowCount));
+        ImGui.Text(string.Concat("Rows: ", excelSheetRowCount));
         ImGui.SameLine();
-        ImGui.TextUnformatted("\u2022");
+        ImGui.Text("\u2022"u8);
         ImGui.SameLine();
-        ImGui.TextUnformatted(string.Concat("Column: ", excelSheetColumns.Length));
+        ImGui.Text(string.Concat("Column: ", excelSheetColumns.Length));
 
         if (excelSheetColumns.Length > 70)
         {
             using (Color.Red.Push(ImGuiCol.Text))
-                ImGuiHelpers.SafeTextWrapped("Displaying this sheet would currently crash the game (ImGui column count limitation). Please use other tools for now.");
+                ImGui.TextWrapped("Displaying this sheet would currently crash the game (ImGui column count limitation). Please use other tools for now.");
             return;
         }
 
@@ -323,7 +323,7 @@ public class ExcelTab : DebugTab
         using var contentChild = ImRaii.Child("Content", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
 
         // i hate these tables!
-        using var table = ImRaii.Table("SheetRowTable", excelSheetColumns.Length,
+        using var table = ImRaii.Table("SheetRowTable"u8, excelSheetColumns.Length,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY |
             ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible | ImGuiTableFlags.Resizable, new Vector2(-1));
 
@@ -405,7 +405,7 @@ public class ExcelTab : DebugTab
                     break;
 
                 default:
-                    ImGui.TextUnformatted(value?.ToString() ?? "???");
+                    ImGui.Text(value?.ToString() ?? "???");
                     break;
             }
         }
@@ -427,7 +427,7 @@ public class ExcelTab : DebugTab
             var row = Rows[i];
             if (row.RowId.ToString().Contains(SearchTerm)
              || row.Text.ToString().Contains(SearchTerm, StringComparison.InvariantCultureIgnoreCase)
-             || row.Text.ExtractText().Contains(SearchTerm, StringComparison.InvariantCultureIgnoreCase))
+             || row.Text.ToString().Contains(SearchTerm, StringComparison.InvariantCultureIgnoreCase))
             {
                 list.Add(row);
             }
@@ -441,7 +441,7 @@ public class ExcelTab : DebugTab
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn(); // RowId
-        ImGui.TextUnformatted(row.RowId.ToString());
+        ImGui.Text(row.RowId.ToString());
 
         ImGui.TableNextColumn(); // Text
         debugRenderer.DrawSeStringSelectable(row.Text.AsSpan(), new NodeOptions()

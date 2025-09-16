@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -10,8 +12,8 @@ using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 using Lumina.Text.ReadOnly;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Services;
 
@@ -23,9 +25,11 @@ public unsafe partial class AtkDebugRenderer
     private readonly TextService _textService;
     private readonly WindowManager _windowManager;
     private readonly LanguageProvider _languageProvider;
+    private readonly AddonObserver _addonObserver;
+    private readonly PinnedInstancesService _pinnedInstancesService;
     private string _nodeQuery = string.Empty;
 
-    public void DrawAddon(ushort addonId, string addonName, bool border = true)
+    public void DrawAddon(ushort addonId, string addonName, List<Pointer<AtkResNode>>? nodePath = null, bool border = true)
     {
         if (addonId == 0 && string.IsNullOrEmpty(addonName))
             return;
@@ -44,7 +48,7 @@ public unsafe partial class AtkDebugRenderer
 
         if (unitBase == null)
         {
-            ImGui.TextUnformatted($"Could not find addon with id {addonId} or name {addonName}");
+            ImGui.Text($"Could not find addon with id {addonId} or name {addonName}");
             return;
         }
 
@@ -58,14 +62,14 @@ public unsafe partial class AtkDebugRenderer
         if (!_debugRenderer.AddonTypes.TryGetValue(unitBase->NameString, out var type))
             type = typeof(AtkUnitBase);
 
-        _debugRenderer.DrawCopyableText(unitBase->NameString);
+        ImGuiUtilsEx.DrawCopyableText(unitBase->NameString);
 
         ImGui.SameLine();
 
         var isVisible = unitBase->IsVisible;
         using (ImRaii.PushColor(ImGuiCol.Text, isVisible ? 0xFF00FF00 : Color.From(ImGuiCol.TextDisabled).ToUInt()))
         {
-            ImGui.TextUnformatted(isVisible ? "Visible" : "Not Visible");
+            ImGui.Text(isVisible ? "Visible" : "Not Visible");
         }
         if (ImGui.IsItemHovered())
         {
@@ -91,7 +95,7 @@ public unsafe partial class AtkDebugRenderer
             if (agent == null || agent->AddonId != unitBase->Id)
                 continue;
 
-            ImGui.TextUnformatted($"Used by Agent{agentId}");
+            ImGui.Text($"Used by Agent{agentId}");
             ImGui.SameLine();
 
             if (!_debugRenderer.AgentTypes.TryGetValue(agentId, out var agentType))
@@ -102,8 +106,7 @@ public unsafe partial class AtkDebugRenderer
                 DefaultOpen = false,
                 DrawContextMenu = (nodeOptions, builder) =>
                 {
-                    var pinnedInstances = Service.Get<PinnedInstancesService>();
-                    var isPinned = pinnedInstances.Contains(agentType);
+                    var isPinned = _pinnedInstancesService.Contains(agentType);
 
                     builder.AddCopyName(_textService, agentId.ToString());
                     builder.AddCopyAddress(_textService, (nint)agent);
@@ -114,21 +117,21 @@ public unsafe partial class AtkDebugRenderer
                     {
                         Visible = !_windowManager.Contains(win => win.WindowName == agentType.Name),
                         Label = _textService.Translate("ContextMenu.TabPopout"),
-                        ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, (nint)agent, agentType, string.Empty))
+                        ClickCallback = () => _windowManager.Open(ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)agent, agentType, string.Empty))
                     });
 
                     builder.Add(new ImGuiContextMenuEntry()
                     {
                         Visible = !isPinned,
                         Label = _textService.Translate("ContextMenu.PinnedInstances.Pin"),
-                        ClickCallback = () => pinnedInstances.Add((nint)agent, agentType)
+                        ClickCallback = () => _pinnedInstancesService.Add((nint)agent, agentType)
                     });
 
                     builder.Add(new ImGuiContextMenuEntry()
                     {
                         Visible = isPinned,
                         Label = _textService.Translate("ContextMenu.PinnedInstances.Unpin"),
-                        ClickCallback = () => pinnedInstances.Remove(agentType)
+                        ClickCallback = () => _pinnedInstancesService.Remove(agentType)
                     });
                 }
             });
@@ -140,7 +143,7 @@ public unsafe partial class AtkDebugRenderer
             var host = unitManager->GetAddonById(unitBase->HostId);
             if (host != null)
             {
-                ImGui.TextUnformatted($"Embedded by Addon{host->NameString}");
+                ImGui.Text($"Embedded by Addon{host->NameString}");
                 ImGui.SameLine();
 
                 if (!_debugRenderer.AddonTypes.TryGetValue(host->NameString, out var hostType))
@@ -151,8 +154,7 @@ public unsafe partial class AtkDebugRenderer
                     DefaultOpen = false,
                     DrawContextMenu = (nodeOptions, builder) =>
                     {
-                        var pinnedInstances = Service.Get<PinnedInstancesService>();
-                        var isPinned = pinnedInstances.Contains(hostType);
+                        var isPinned = _pinnedInstancesService.Contains(hostType);
 
                         builder.AddCopyName(_textService, host->NameString);
                         builder.AddCopyAddress(_textService, (nint)host);
@@ -163,7 +165,7 @@ public unsafe partial class AtkDebugRenderer
                         {
                             Visible = !_windowManager.Contains(win => win.WindowName == hostType.Name),
                             Label = _textService.Translate("ContextMenu.TabPopout"),
-                            ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, (nint)host, hostType, string.Empty))
+                            ClickCallback = () => _windowManager.Open(ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)host, hostType, string.Empty))
                         });
                     }
                 });
@@ -191,7 +193,7 @@ public unsafe partial class AtkDebugRenderer
 
         if (unitBase->RootNode != null)
         {
-            PrintNode(unitBase->RootNode, true, string.Empty, nodeOptions with { DefaultOpen = true });
+            PrintNode(unitBase->RootNode, true, string.Empty, nodePath, nodeOptions with { DefaultOpen = true });
         }
 
         if (unitBase->UldManager.NodeListCount > 0)
@@ -205,7 +207,9 @@ public unsafe partial class AtkDebugRenderer
                 Title = "Node List",
                 TitleColor = Color.FromUInt(0xFFFFAAAA),
             });
-            if (!nodeTree) return;
+
+            if (!nodeTree)
+                return;
 
             ImGui.InputTextWithHint("##NodeSearch", _textService.Translate("SearchBar.Hint"), ref _nodeQuery, 256, ImGuiInputTextFlags.AutoSelectAll);
 
@@ -224,7 +228,7 @@ public unsafe partial class AtkDebugRenderer
                     continue;
                 }
 
-                PrintNode(node, false, $"[{j++}] ", nodeOptions with { DefaultOpen = false });
+                PrintNode(node, false, $"[{j++}] ", nodePath, nodeOptions with { DefaultOpen = false });
             }
         }
     }
@@ -268,34 +272,37 @@ public unsafe partial class AtkDebugRenderer
         var unitBase = unitManager->GetAddonByNode(node);
         if (unitBase == null)
         {
-            ImGui.TextUnformatted($"Could not find addon with node {(nint)node:X}");
+            ImGui.Text($"Could not find addon with node {(nint)node:X}");
             return;
         }
 
-        PrintNode(node, false, string.Empty, new() { DefaultOpen = true });
+        PrintNode(node, false, string.Empty, null, new() { DefaultOpen = true });
     }
 
-    private void PrintNode(AtkResNode* node, bool printSiblings, string treePrefix, NodeOptions nodeOptions)
+    private void PrintNode(AtkResNode* node, bool printSiblings, string treePrefix, List<Pointer<AtkResNode>>? nodePath, NodeOptions nodeOptions)
     {
         if (node == null)
             return;
 
         nodeOptions = nodeOptions.WithAddress((nint)node);
 
+        if (nodePath != null)
+            ImGui.SetNextItemOpen(nodePath.Contains(node), ImGuiCond.Always);
+
         if ((int)node->Type < 1000)
-            PrintSimpleNode(node, treePrefix, nodeOptions);
+            PrintSimpleNode(node, treePrefix, nodePath, nodeOptions);
         else
-            PrintComponentNode(node, treePrefix, nodeOptions);
+            PrintComponentNode(node, treePrefix, nodePath, nodeOptions);
 
         if (printSiblings)
         {
             var prevNode = node;
             while ((prevNode = prevNode->PrevSiblingNode) != null)
-                PrintNode(prevNode, false, string.Empty, nodeOptions);
+                PrintNode(prevNode, false, string.Empty, nodePath, nodeOptions);
         }
     }
 
-    private void PrintSimpleNode(AtkResNode* node, string treePrefix, NodeOptions nodeOptions)
+    private void PrintSimpleNode(AtkResNode* node, string treePrefix, List<Pointer<AtkResNode>>? nodePath, NodeOptions nodeOptions)
     {
         using var treeNode = _debugRenderer.DrawTreeNode(nodeOptions with
         {
@@ -311,7 +318,7 @@ public unsafe partial class AtkDebugRenderer
                     Label = _textService.Translate("ContextMenu.TabPopout"),
                     ClickCallback = () =>
                     {
-                        _windowManager.Open(new NodeInspectorWindow(_serviceProvider, this)
+                        _windowManager.Open(new NodeInspectorWindow(_windowManager, _textService, _addonObserver, this)
                         {
                             WindowName = nodeOptions.Title!,
                             NodeAddress = (nint)node
@@ -323,15 +330,19 @@ public unsafe partial class AtkDebugRenderer
 
         nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
 
-        if (!treeNode) return;
+        if (!treeNode)
+            return;
 
-        ImGui.TextUnformatted("Node: ");
+        if (nodePath != null && nodePath.Count > 0 && node == nodePath.Last())
+            ImGui.SetScrollHereY();
+
+        ImGui.Text("Node: "u8);
         ImGui.SameLine();
         _debugRenderer.DrawAddress(node);
         ImGui.SameLine();
         _debugRenderer.DrawPointerType((nint)node, typeof(AtkResNode), nodeOptions);
 
-        ImGui.TextUnformatted("NodeId:");
+        ImGui.Text("NodeId:"u8);
         ImGui.SameLine();
         _debugRenderer.DrawNumeric(node->NodeId, typeof(uint), new NodeOptions() { HexOnShift = true });
 
@@ -341,10 +352,10 @@ public unsafe partial class AtkDebugRenderer
         PrintAnimations(node);
 
         if (node->ChildNode != null)
-            PrintNode(node->ChildNode, true, string.Empty, nodeOptions);
+            PrintNode(node->ChildNode, true, string.Empty, nodePath, nodeOptions);
     }
 
-    private void PrintComponentNode(AtkResNode* resNode, string treePrefix, NodeOptions nodeOptions)
+    private void PrintComponentNode(AtkResNode* resNode, string treePrefix, List<Pointer<AtkResNode>>? nodePath, NodeOptions nodeOptions)
     {
         var node = (AtkComponentNode*)resNode;
         var component = node->Component;
@@ -367,7 +378,7 @@ public unsafe partial class AtkDebugRenderer
                     Label = _textService.Translate("ContextMenu.TabPopout"),
                     ClickCallback = () =>
                     {
-                        _windowManager.Open(new NodeInspectorWindow(_serviceProvider, this)
+                        _windowManager.Open(new NodeInspectorWindow(_windowManager, _textService, _addonObserver, this)
                         {
                             WindowName = nodeOptions.Title!,
                             NodeAddress = (nint)node
@@ -382,13 +393,16 @@ public unsafe partial class AtkDebugRenderer
         if (!treeNode)
             return;
 
-        ImGui.TextUnformatted("Node:");
+        if (nodePath != null && nodePath.Count > 0 && node == nodePath.Last())
+            ImGui.SetScrollHereY();
+
+        ImGui.Text("Node:"u8);
         ImGui.SameLine();
         _debugRenderer.DrawAddress(node);
         ImGui.SameLine();
         _debugRenderer.DrawPointerType((nint)node, typeof(AtkComponentNode), nodeOptions.WithAddress(1));
 
-        ImGui.TextUnformatted("Component:");
+        ImGui.Text("Component:"u8);
         ImGui.SameLine();
         _debugRenderer.DrawAddress(component);
         ImGui.SameLine();
@@ -404,7 +418,7 @@ public unsafe partial class AtkDebugRenderer
         PrintLabelSets(resNode);
         PrintAnimations(resNode);
 
-        PrintNode(component->UldManager.RootNode, true, string.Empty, nodeOptions);
+        PrintNode(component->UldManager.RootNode, true, string.Empty, nodePath, nodeOptions);
 
         using var nodeTree = _debugRenderer.DrawTreeNode(new NodeOptions()
         {
@@ -416,7 +430,7 @@ public unsafe partial class AtkDebugRenderer
 
         for (var i = 0; i < component->UldManager.NodeListCount; i++)
         {
-            PrintNode(component->UldManager.NodeList[i], false, $"[{i}] ", nodeOptions);
+            PrintNode(component->UldManager.NodeList[i], false, $"[{i}] ", nodePath, nodeOptions);
         }
     }
 
@@ -450,14 +464,14 @@ public unsafe partial class AtkDebugRenderer
         if (hasDifferentTarget) columns += 1;
         if (hasDifferentListener) columns += 1;
 
-        using var table = ImRaii.Table("EventTable", columns, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
+        using var table = ImRaii.Table("EventTable"u8, columns, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
         if (!table) return;
 
-        ImGui.TableSetupColumn("EventType", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Param", ImGuiTableColumnFlags.WidthFixed, 50);
-        if (hasDifferentTarget) ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, 100);
-        if (hasDifferentListener) ImGui.TableSetupColumn("Listener", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Event", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("EventType"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Param"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+        if (hasDifferentTarget) ImGui.TableSetupColumn("Target"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        if (hasDifferentListener) ImGui.TableSetupColumn("Listener"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Event"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -466,17 +480,17 @@ public unsafe partial class AtkDebugRenderer
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{evt->State.EventType}");
+            ImGui.Text($"{evt->State.EventType}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{evt->Param}");
+            ImGui.Text($"{evt->Param}");
 
             if (hasDifferentTarget)
             {
                 ImGui.TableNextColumn();
                 if (evt->Target == node)
                 {
-                    ImGui.TextUnformatted("Node");
+                    ImGui.Text("Node"u8);
                 }
                 else
                 {
@@ -489,7 +503,7 @@ public unsafe partial class AtkDebugRenderer
                 ImGui.TableNextColumn();
                 if ((nint)evt->Listener == unitBaseAddress)
                 {
-                    ImGui.TextUnformatted("UnitBase");
+                    ImGui.Text("UnitBase"u8);
                 }
                 else
                 {
@@ -531,16 +545,16 @@ public unsafe partial class AtkDebugRenderer
 
         var keyFrameGroup = labelSets->LabelKeyGroup;
 
-        using var table = ImRaii.Table("LabelSetKeyFrameTable", 7, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX);
+        using var table = ImRaii.Table("LabelSetKeyFrameTable"u8, 7, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Frame ID", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Speed Start", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Speed End", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Interpolation", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Label ID", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Jump Behavior", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Target Label ID", ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Frame ID"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Speed Start"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Speed End"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Interpolation"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Label ID"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Jump Behavior"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Target Label ID"u8, ImGuiTableColumnFlags.WidthFixed);
 
         ImGui.TableHeadersRow();
 
@@ -549,25 +563,25 @@ public unsafe partial class AtkDebugRenderer
             var keyFrame = keyFrameGroup.KeyFrames[i];
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.FrameIdx}");
+            ImGui.Text($"{keyFrame.FrameIdx}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.SpeedCoefficient1:F2}");
+            ImGui.Text($"{keyFrame.SpeedCoefficient1:F2}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.SpeedCoefficient2:F2}");
+            ImGui.Text($"{keyFrame.SpeedCoefficient2:F2}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.Interpolation}");
+            ImGui.Text($"{keyFrame.Interpolation}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.Value.Label.LabelId}");
+            ImGui.Text($"{keyFrame.Value.Label.LabelId}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.Value.Label.JumpBehavior}");
+            ImGui.Text($"{keyFrame.Value.Label.JumpBehavior}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{keyFrame.Value.Label.JumpLabelId}");
+            ImGui.Text($"{keyFrame.Value.Label.JumpLabelId}");
         }
     }
 
@@ -620,55 +634,55 @@ public unsafe partial class AtkDebugRenderer
 
             if (!groupHasAnyFrames)
             {
-                ImGui.Text("Group has no keyframes");
+                ImGui.Text("Group has no keyframes"u8);
                 continue;
             }
 
-            using var keyFrameTable = ImRaii.Table("AnimationKeyFrameTable", tableColumnCount, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX);
+            using var keyFrameTable = ImRaii.Table("AnimationKeyFrameTable"u8, tableColumnCount, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX);
             if (!keyFrameTable) return;
 
-            ImGui.TableSetupColumn("Frame ID", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Frame ID"u8, ImGuiTableColumnFlags.WidthFixed);
 
             if (hasPosition)
             {
-                ImGui.TableSetupColumn("X", ImGuiTableColumnFlags.WidthFixed);
-                ImGui.TableSetupColumn("Y", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("X"u8, ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Y"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasRotation)
             {
-                ImGui.TableSetupColumn("Rotation", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Rotation"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasScale)
             {
-                ImGui.TableSetupColumn("Scale", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Scale"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasAlpha)
             {
-                ImGui.TableSetupColumn("Alpha", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Alpha"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasTint)
             {
-                ImGui.TableSetupColumn("Add Color", ImGuiTableColumnFlags.WidthFixed);
-                ImGui.TableSetupColumn("Multiply Color", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Add Color"u8, ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Multiply Color"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasPartId)
             {
-                ImGui.TableSetupColumn("Part ID", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Part ID"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasTextEdge)
             {
-                ImGui.TableSetupColumn("Text Edge", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Text Edge"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasTextLabel)
             {
-                ImGui.TableSetupColumn("Text Label", ImGuiTableColumnFlags.WidthFixed);
+                ImGui.TableSetupColumn("Text Label"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             ImGui.TableHeadersRow();
@@ -697,7 +711,7 @@ public unsafe partial class AtkDebugRenderer
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 ImGui.AlignTextToFramePadding();
-                ImGui.TextUnformatted(frameIndex.ToString());
+                ImGui.Text(frameIndex.ToString());
 
                 for (var groupSelector = 0; groupSelector < 8; groupSelector++)
                 {
@@ -715,33 +729,33 @@ public unsafe partial class AtkDebugRenderer
                             case 0 when hasPosition: // Position
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
 
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 1 when hasRotation: // Rotation
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Float.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 2 when hasScale: // Scale
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
 
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 3 when hasAlpha: // Alpha
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.Byte.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Byte.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 4 when hasTint: // NodeTint
@@ -759,7 +773,7 @@ public unsafe partial class AtkDebugRenderer
                             case 5 when hasPartId: // PartId
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 6 when hasTextEdge: // TextEdge
@@ -772,7 +786,7 @@ public unsafe partial class AtkDebugRenderer
                             case 7 when hasTextLabel: // TextLabel
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                _debugRenderer.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture)); // Might not be the correct property UShort vs Short for this bucket
+                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture)); // Might not be the correct property UShort vs Short for this bucket
                                 break;
                         }
                     }
@@ -869,11 +883,11 @@ public unsafe partial class AtkDebugRenderer
         using var treeNode = ImRaii.TreeNode("Properties", ImGuiTreeNodeFlags.SpanAvailWidth);
         if (!treeNode) return;
 
-        using var infoTable = ImRaii.Table("NodeInfoTable", 2, ImGuiTableFlags.NoSavedSettings);
+        using var infoTable = ImRaii.Table("NodeInfoTable"u8, 2, ImGuiTableFlags.NoSavedSettings);
         if (!infoTable) return;
 
-        ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Label"u8, ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Value"u8, ImGuiTableColumnFlags.WidthStretch);
 
         StartRow("Visible");
         var visible = node->NodeFlags.HasFlag(NodeFlags.Visible);
@@ -947,7 +961,7 @@ public unsafe partial class AtkDebugRenderer
                 var imageNode = (AtkImageNode*)node;
                 StartRow("Asset");
                 partId = imageNode->PartId;
-                if (ImGuiUtilsEx.PartListSelector(imageNode->PartsList, ref partId))
+                if (ImGuiUtilsEx.PartListSelector(_serviceProvider, imageNode->PartsList, ref partId))
                 {
                     imageNode->PartId = (ushort)partId;
                     imageNode->DrawFlags |= 1;
@@ -962,7 +976,7 @@ public unsafe partial class AtkDebugRenderer
                 if (ImGui.Selectable(str.ToString() + $"##TextNodeText{(nint)node:X}"))
                 {
                     var windowTitle = $"Text Node #{node->NodeId} (0x{(nint)node:X})";
-                    _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_serviceProvider)
+                    _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _addonObserver, _serviceProvider)
                     {
                         String = str,
                         Language = _languageProvider.ClientLanguage,
@@ -1015,17 +1029,10 @@ public unsafe partial class AtkDebugRenderer
                 }
 
                 StartRow("Text Flags");
-                var textFlags = (TextFlags)textNode->TextFlags;
+                var textFlags = textNode->TextFlags;
                 if (ImGuiUtilsEx.EnumCombo("##TextFlags", ref textFlags, true))
                 {
-                    textNode->TextFlags = (byte)textFlags;
-                }
-
-                StartRow("Text Flags 2");
-                var textFlags2 = (TextFlags2)textNode->TextFlags2;
-                if (ImGuiUtilsEx.EnumCombo("##TextFlags2", ref textFlags2, true))
-                {
-                    textNode->TextFlags2 = (byte)textFlags2;
+                    textNode->TextFlags = textFlags;
                 }
 
                 break;
@@ -1038,7 +1045,7 @@ public unsafe partial class AtkDebugRenderer
                 if (ImGui.Selectable(str.ToString() + $"##CounterNodeText{(nint)node:X}"))
                 {
                     var windowTitle = $"Counter Node #{node->NodeId} (0x{(nint)node:X})";
-                    _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_serviceProvider)
+                    _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _addonObserver, _serviceProvider)
                     {
                         String = str,
                         Language = _languageProvider.ClientLanguage,
@@ -1053,7 +1060,7 @@ public unsafe partial class AtkDebugRenderer
                 var ngNode = (AtkNineGridNode*)node;
                 StartRow("Asset");
                 partId = ngNode->PartId;
-                if (ImGuiUtilsEx.PartListSelector(ngNode->PartsList, ref partId))
+                if (ImGuiUtilsEx.PartListSelector(_serviceProvider, ngNode->PartsList, ref partId))
                 {
                     ngNode->PartId = partId;
                     ngNode->DrawFlags |= 1;
@@ -1063,10 +1070,10 @@ public unsafe partial class AtkDebugRenderer
             case NodeType.Collision:
                 var collNode = (AtkCollisionNode*)node;
                 StartRow("CollisionType");
-                var collisionType = (CollisionType)collNode->CollisionType;
+                var collisionType = collNode->CollisionType;
                 if (ImGuiUtilsEx.EnumCombo("##CollisionType", ref collisionType))
                 {
-                    collNode->CollisionType = (ushort)collisionType;
+                    collNode->CollisionType = collisionType;
                 }
 
                 StartRow("Uses");
@@ -1081,7 +1088,7 @@ public unsafe partial class AtkDebugRenderer
                 var cmNode = (AtkClippingMaskNode*)node;
                 StartRow("Asset");
                 partId = cmNode->PartId;
-                if (ImGuiUtilsEx.PartListSelector(cmNode->PartsList, ref partId))
+                if (ImGuiUtilsEx.PartListSelector(_serviceProvider, cmNode->PartsList, ref partId))
                 {
                     cmNode->PartId = (ushort)partId;
                     cmNode->DrawFlags |= 1;
@@ -1125,7 +1132,7 @@ public unsafe partial class AtkDebugRenderer
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
         ImGui.AlignTextToFramePadding();
-        ImGui.TextUnformatted(label);
+        ImGui.Text(label);
         ImGui.TableNextColumn();
         ImGui.SetNextItemWidth(200);
     }

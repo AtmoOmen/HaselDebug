@@ -1,13 +1,12 @@
+using Dalamud.Plugin.Services;
 using HaselCommon.Gui.ImGuiTable;
-using HaselCommon.Services;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.TripleTriadCards.Columns;
 
 [RegisterTransient, AutoConstruct]
 public partial class NumberColumn : ColumnString<TripleTriadCardEntry>
 {
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -21,7 +20,7 @@ public partial class NumberColumn : ColumnString<TripleTriadCardEntry>
         var isEx = entry.ResidentRow.UIPriority == 5;
         var order = (uint)entry.ResidentRow.Order;
         var addonRowId = isEx ? 9773u : 9772;
-        return _seStringEvaluator.EvaluateFromAddon(addonRowId, [order]).ExtractText();
+        return _seStringEvaluator.EvaluateFromAddon(addonRowId, [order]).ToString();
     }
 
     public override int Compare(TripleTriadCardEntry lhs, TripleTriadCardEntry rhs)

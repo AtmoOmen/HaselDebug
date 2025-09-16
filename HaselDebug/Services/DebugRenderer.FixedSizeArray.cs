@@ -2,10 +2,8 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Dalamud.Interface.Utility.Raii;
-using HaselCommon.Extensions;
 using HaselCommon.Graphics;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Services;
 
@@ -29,7 +27,7 @@ public unsafe partial class DebugRenderer
         if (isString)
         {
             if (fieldType == typeof(char))
-                ImGui.TextUnformatted(new string((char*)address));
+                ImGui.Text(new string((char*)address));
             else
                 DrawSeString((byte*)address, nodeOptions);
 
@@ -51,7 +49,7 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("FixedSizeArrayTable"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -66,7 +64,7 @@ public unsafe partial class DebugRenderer
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Value
             DrawPointerType(entryAddress, fieldType, new NodeOptions()

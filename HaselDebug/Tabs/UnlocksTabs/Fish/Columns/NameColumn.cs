@@ -1,10 +1,8 @@
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Fish.Columns;
@@ -24,7 +22,7 @@ public partial class NameColumn : ColumnString<FishParameter>
     }
 
     public override string ToName(FishParameter row)
-        => _textService.GetItemName(row.Item.RowId).ExtractText().StripSoftHyphen();
+        => _textService.GetItemName(row.Item.RowId).ToString();
 
     public override unsafe void DrawColumn(FishParameter row)
     {

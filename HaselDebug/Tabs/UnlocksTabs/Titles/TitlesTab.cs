@@ -5,7 +5,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Titles;
 
@@ -33,14 +32,14 @@ public unsafe class TitlesTab(TitlesTable table) : DebugTab, IUnlockTab
     {
         if (!AgentLobby.Instance()->IsLoggedIn)
         {
-            ImGui.TextUnformatted("Not logged in.");
+            ImGui.Text("Not logged in."u8);
             return;
         }
 
         var localPlayer = Control.GetLocalPlayer();
         if (localPlayer == null)
         {
-            ImGui.TextUnformatted("LocalPlayer unavailable.");
+            ImGui.Text("LocalPlayer unavailable."u8);
             return;
         }
 

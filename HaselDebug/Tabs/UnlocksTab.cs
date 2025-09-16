@@ -7,18 +7,21 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Windows;
-using ImGuiNET;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Tabs;
 
-[RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append)]
-public class UnlocksTab : DebugTab
+[RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
+public partial class UnlocksTab : DebugTab
 {
+    private readonly IServiceProvider _serviceProvider;
+
     public override unsafe bool DrawInChild => !AgentLobby.Instance()->IsLoggedIn;
     public override bool IsPinnable => false;
     public override bool CanPopOut => false;
 
-    public UnlocksTab(IEnumerable<IUnlockTab> subTabs)
+    [AutoPostConstruct]
+    private void Initialize(IEnumerable<IUnlockTab> subTabs)
     {
         SubTabs = subTabs
             .OrderBy(t => t.Title).ToArray()
@@ -29,15 +32,15 @@ public class UnlocksTab : DebugTab
     {
         if (!AgentLobby.Instance()->IsLoggedIn || SubTabs == null)
         {
-            ImGui.TextUnformatted("Not logged in.");
+            ImGui.Text("Not logged in."u8);
             return;
         }
 
-        using var table = ImRaii.Table("UnlocksTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg, new Vector2(-1));
+        using var table = ImRaii.Table("UnlocksTable"u8, 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg, new Vector2(-1));
         if (!table) return;
 
-        ImGui.TableSetupColumn("Tab", ImGuiTableColumnFlags.WidthFixed, 200);
-        ImGui.TableSetupColumn("Progress", ImGuiTableColumnFlags.WidthFixed, 200);
+        ImGui.TableSetupColumn("Tab"u8, ImGuiTableColumnFlags.WidthFixed, 200);
+        ImGui.TableSetupColumn("Progress"u8, ImGuiTableColumnFlags.WidthFixed, 200);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
@@ -50,11 +53,11 @@ public class UnlocksTab : DebugTab
             ImGui.TableNextColumn();
             if (ImGui.Selectable(tab.Title, false, ImGuiSelectableFlags.SpanAllColumns))
             {
-                Service.Get<PluginWindow>().SelectTab(tab.InternalName);
+                _serviceProvider.GetRequiredService<PluginWindow>().SelectTab(tab.InternalName);
             }
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(canShowProgress
+            ImGui.Text(canShowProgress
                 ? $"{progress.NumUnlocked} / {progress.TotalUnlocks} ({progress.NumUnlocked / (float)progress.TotalUnlocks * 100f:0.00}%)"
                 : "Missing Data");
         }

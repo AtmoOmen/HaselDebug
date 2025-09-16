@@ -4,7 +4,6 @@ using Dalamud.Plugin.Services;
 using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
@@ -15,23 +14,23 @@ public partial class AetherytesTab : DebugTab
     private readonly IAetheryteList _aetheryteList;
     private readonly TextService _textService;
     private readonly ExcelService _excelService;
-    private readonly TextureService _textureService;
+    private readonly UldService _uldService;
 
     public override bool DrawInChild => false;
 
     public override void Draw()
     {
-        using var table = ImRaii.Table("AetheryteListTable", 8, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("AetheryteListTable"u8, 8, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("ID", ImGuiTableColumnFlags.WidthFixed, 50);
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 20);
-        ImGui.TableSetupColumn("Region Category", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Expansion Category", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Region Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Map Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Aetheryte Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Gil Cost", ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("ID"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 20);
+        ImGui.TableSetupColumn("Region Category"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Expansion Category"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Region Name"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Map Name"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Aetheryte Name"u8, ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Gil Cost"u8, ImGuiTableColumnFlags.WidthFixed, 80);
 
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
@@ -58,28 +57,28 @@ public partial class AetherytesTab : DebugTab
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"#{aetheryte.AetheryteId}");
+            ImGui.Text($"#{aetheryte.AetheryteId}");
 
             ImGui.TableNextColumn();
-            _textureService.DrawPart("Teleport", 16, GetPartId(GetTimelineId(regionType, territory.RowId)), 40 / 2f);
+            _uldService.DrawPart("Teleport", 16, GetPartId(GetTimelineId(regionType, territory.RowId)), 40 / 2f);
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(GetRegionName(regionType));
+            ImGui.Text(GetRegionName(regionType));
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(territory.ExVersion.Value.Name.ExtractText());
+            ImGui.Text(territory.ExVersion.Value.Name.ToString());
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(regionName);
+            ImGui.Text(regionName);
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(mapName);
+            ImGui.Text(mapName);
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(aetheryteName);
+            ImGui.Text(aetheryteName);
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{aetheryte.GilCost}{SeIconChar.Gil.ToIconString()}");
+            ImGui.Text($"{aetheryte.GilCost}{SeIconChar.Gil.ToIconString()}");
         }
     }
 
@@ -122,9 +121,9 @@ public partial class AetherytesTab : DebugTab
     {
         return region switch
         {
-            AetheryteRegion.LaNoscea => _excelService.TryGetRow<PlaceName>(22, out var placeName) ? placeName.Name.ExtractText() : string.Empty, // La Noscea
-            AetheryteRegion.TheBlackShroud => _excelService.TryGetRow<PlaceName>(23, out var placeName) ? placeName.Name.ExtractText() : string.Empty, // The Black Shroud
-            AetheryteRegion.Thanalan => _excelService.TryGetRow<PlaceName>(24, out var placeName) ? placeName.Name.ExtractText() : string.Empty, // Thanalan
+            AetheryteRegion.LaNoscea => _excelService.TryGetRow<PlaceName>(22, out var placeName) ? placeName.Name.ToString() : string.Empty, // La Noscea
+            AetheryteRegion.TheBlackShroud => _excelService.TryGetRow<PlaceName>(23, out var placeName) ? placeName.Name.ToString() : string.Empty, // The Black Shroud
+            AetheryteRegion.Thanalan => _excelService.TryGetRow<PlaceName>(24, out var placeName) ? placeName.Name.ToString() : string.Empty, // Thanalan
             AetheryteRegion.Coerthas or AetheryteRegion.Dravania or AetheryteRegion.AbalathiasSpine => _textService.GetAddonText(8486), // Ishgard and Surrounding Areas
             AetheryteRegion.GyrAbania => _textService.GetAddonText(8488), // Gyr Abania
             AetheryteRegion.Hingashi or AetheryteRegion.Othard => _textService.GetAddonText(8489), // Othard

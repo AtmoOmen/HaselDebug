@@ -3,7 +3,6 @@ using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 using Achievement = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Achievements;
@@ -33,7 +32,7 @@ public unsafe class AchievementsTab(AchievementsTable table) : DebugTab, IUnlock
     {
         if (!AgentLobby.Instance()->IsLoggedIn)
         {
-            ImGui.TextUnformatted("Not logged in.");
+            ImGui.Text("Not logged in."u8);
             return;
         }
 

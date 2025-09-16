@@ -5,16 +5,15 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Game.Enums;
 using HaselCommon.Graphics;
 using HaselCommon.Gui;
 using HaselCommon.Services;
+using HaselCommon.Utils;
 using HaselDebug.Services;
 using HaselDebug.Sheets;
-using ImGuiNET;
 using Lumina.Data.Files;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
@@ -30,13 +29,13 @@ public unsafe partial class UnlocksTabUtils
 {
     private readonly ExcelService _excelService;
     private readonly TextService _textService;
-    private readonly TextureService _textureService;
+    private readonly ITextureProvider _textureProvider;
+    private readonly UldService _uldService;
     private readonly ItemService _itemService;
     private readonly ImGuiContextMenuService _imGuiContextMenuService;
     private readonly IDataManager _dataManager;
-    private readonly ITextureProvider _textureProvider;
     private readonly TripleTriadNumberFont _tripleTriadNumberFont;
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
 
     private readonly Dictionary<uint, Vector2> _iconSizeCache = [];
     private readonly Dictionary<ushort, uint> _facePaintIconCache = [];
@@ -50,13 +49,13 @@ public unsafe partial class UnlocksTabUtils
 
     public bool DrawSelectableItem(Item item, ImGuiId id, bool drawIcon = true, bool isHq = false, float? iconSize = null)
     {
-        var itemName = _textService.GetItemName(item.RowId).ExtractText().StripSoftHyphen();
+        var itemName = _textService.GetItemName(item.RowId).ToString();
         var isHovered = false;
         iconSize ??= ImGui.GetTextLineHeight();
 
         if (drawIcon)
         {
-            _textureService.DrawIcon(item.Icon, isHq, (float)iconSize);
+            _textureProvider.DrawIcon(new(item.Icon, isHq), (float)iconSize);
             isHovered |= ImGui.IsItemHovered();
             ImGui.SameLine();
         }
@@ -84,7 +83,7 @@ public unsafe partial class UnlocksTabUtils
             if (_textureProvider.GetFromGame("ui/uld/RecipeNoteBook_hr1.tex").TryGetWrap(out var tex, out _))
             {
                 var pos = ImGui.GetCursorScreenPos() + new Vector2((float)iconSize / 2f);
-                ImGui.GetWindowDrawList().AddImage(tex.ImGuiHandle, pos, pos + new Vector2((float)iconSize / 1.5f), new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
+                ImGui.GetWindowDrawList().AddImage(tex.Handle, pos, pos + new Vector2((float)iconSize / 1.5f), new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
             }
         }
 
@@ -104,17 +103,17 @@ public unsafe partial class UnlocksTabUtils
         using var tooltip = ImRaii.Tooltip();
         if (!tooltip) return;
 
-        using var popuptable = ImRaii.Table("PopupTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var popuptable = ImRaii.Table("PopupTable"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!popuptable) return;
 
         var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
         var drawResult = ImGuiHelpers.SeStringWrapped(title, new() { TargetDrawList = default(ImDrawListPtr) });
 
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
-        ImGui.TableSetupColumn("Text", ImGuiTableColumnFlags.WidthFixed, Math.Max(drawResult.Size.X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
+        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthFixed, Math.Max(drawResult.Size.X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
 
         ImGui.TableNextColumn(); // Icon
-        ImGui.Image(icon.ImGuiHandle, ImGuiHelpers.ScaledVector2(40));
+        ImGui.Image(icon.Handle, ImGuiHelpers.ScaledVector2(40));
 
         ImGui.TableNextColumn(); // Text
         using var indentSpacing = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
@@ -159,17 +158,17 @@ public unsafe partial class UnlocksTabUtils
         using var tooltip = ImRaii.Tooltip();
         if (!tooltip) return;
 
-        using var popuptable = ImRaii.Table("PopupTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var popuptable = ImRaii.Table("PopupTable"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!popuptable) return;
 
         var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
-        var title = _textService.GetItemName(item.RowId).ExtractText().StripSoftHyphen();
+        var title = _textService.GetItemName(item.RowId).ToString();
 
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
-        ImGui.TableSetupColumn("Text", ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
+        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
 
         ImGui.TableNextColumn(); // Icon
-        ImGui.Image(icon.ImGuiHandle, ImGuiHelpers.ScaledVector2(40));
+        ImGui.Image(icon.Handle, ImGuiHelpers.ScaledVector2(40));
 
         var isUnlocked = _itemService.IsUnlockable(item.RowId) && _itemService.IsUnlocked(item.RowId);
         if (isUnlocked)
@@ -179,7 +178,7 @@ public unsafe partial class UnlocksTabUtils
             if (_textureProvider.GetFromGame("ui/uld/RecipeNoteBook_hr1.tex").TryGetWrap(out var checkTex, out _))
             {
                 var pos = ImGui.GetCursorScreenPos() + new Vector2(40 * ImGuiHelpers.GlobalScale / 2f);
-                ImGui.GetWindowDrawList().AddImage(checkTex.ImGuiHandle, pos, pos + new Vector2(40 * ImGuiHelpers.GlobalScale / 1.5f), new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
+                ImGui.GetWindowDrawList().AddImage(checkTex.Handle, pos, pos + new Vector2(40 * ImGuiHelpers.GlobalScale / 1.5f), new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
             }
         }
 
@@ -187,51 +186,51 @@ public unsafe partial class UnlocksTabUtils
         using var indentSpacing = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
         using var indent = ImRaii.PushIndent(1);
 
-        ImGui.TextUnformatted(title);
+        ImGui.Text(title);
 
         if (isUnlocked)
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 40 * ImGuiHelpers.GlobalScale / 2f - 3); // wtf
 
-        var category = item.ItemUICategory.IsValid ? item.ItemUICategory.Value.Name.ExtractText().StripSoftHyphen() : null;
+        var category = item.ItemUICategory.IsValid ? item.ItemUICategory.Value.Name.ToString() : null;
         if (!string.IsNullOrEmpty(category))
         {
             ImGuiUtils.PushCursorY(-3 * ImGuiHelpers.GlobalScale);
             using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey.ToUInt()))
-                ImGui.TextUnformatted(category);
+                ImGui.Text(category);
         }
 
-        var description = descriptionOverride ?? (!item.Description.IsEmpty ? item.Description.ExtractText().StripSoftHyphen() : null);
+        var description = descriptionOverride ?? (!item.Description.IsEmpty ? item.Description.ToString() : null);
         if (!string.IsNullOrEmpty(description))
         {
             DrawSeparator(marginTop: 1, marginBottom: 4);
 
-            ImGuiHelpers.SafeTextWrapped(description);
+            ImGui.TextWrapped(description);
         }
 
         switch ((ItemActionType)item.ItemAction.Value.Type)
         {
             case ItemActionType.Mount when _excelService.TryGetRow<Mount>(item.ItemAction.Value.Data[0], out var mount):
-                _textureService.DrawIcon(64000 + mount.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon(64000 + mount.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.Companion when _excelService.TryGetRow<Companion>(item.ItemAction.Value.Data[0], out var companion):
-                _textureService.DrawIcon(64000 + companion.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon(64000 + companion.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.Ornament when _excelService.TryGetRow<Ornament>(item.ItemAction.Value.Data[0], out var ornament):
-                _textureService.DrawIcon(59000 + ornament.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon(59000 + ornament.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.UnlockLink when item.ItemAction.Value.Data[1] == 5211 && _excelService.TryGetRow<Emote>(item.ItemAction.Value.Data[2], out var emote):
-                _textureService.DrawIcon(emote.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon((uint)emote.Icon, new DrawInfo() { Scale = 0.5f * ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.UnlockLink when item.ItemAction.Value.Data[1] == 4659 && _itemService.GetHairstyleIconId(item.RowId) is { } hairStyleIconId && hairStyleIconId != 0:
-                _textureService.DrawIcon(hairStyleIconId, new DrawInfo() { Scale = ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon(hairStyleIconId, new DrawInfo() { Scale = ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.UnlockLink when item.ItemAction.Value.Data[1] == 9390 && TryGetFacePaintIconId(item.ItemAction.Value.Data[0], out var facePaintIconId):
-                _textureService.DrawIcon(facePaintIconId, new DrawInfo() { Scale = ImGuiHelpers.GlobalScale });
+                _textureProvider.DrawIcon(facePaintIconId, new DrawInfo() { Scale = ImGuiHelpers.GlobalScale });
                 break;
 
             case ItemActionType.TripleTriadCard:
@@ -240,12 +239,12 @@ public unsafe partial class UnlocksTabUtils
                     obtainRow.Icon != 0)
                 {
                     DrawSeparator();
-                    _textureService.DrawIcon(obtainRow.Icon, 40 * ImGuiHelpers.GlobalScale);
+                    _textureProvider.DrawIcon(obtainRow.Icon, 40 * ImGuiHelpers.GlobalScale);
                     ImGui.SameLine();
-                    ImGuiHelpers.SafeTextWrapped(_seStringEvaluator.EvaluateFromAddon(obtainRow.Icon, [
+                    ImGui.TextWrapped(_seStringEvaluator.EvaluateFromAddon(obtainRow.Icon, [
                         residentRow.Acquisition.RowId,
                     residentRow.Location.RowId
-                    ]).ExtractText().StripSoftHyphen());
+                    ]).ToString());
                 }
 
                 DrawTripleTriadCard(item);
@@ -254,7 +253,7 @@ public unsafe partial class UnlocksTabUtils
             default:
                 if (item.ItemUICategory.RowId == 95 && _excelService.TryGetRow<Picture>(item.AdditionalData.RowId, out var picture)) // Paintings
                 {
-                    _textureService.DrawIcon(picture.Image, ResizeToFit(GetIconSize((uint)picture.Image), ImGui.GetContentRegionAvail().X));
+                    _textureProvider.DrawIcon(picture.Image, ResizeToFit(GetIconSize((uint)picture.Image), ImGui.GetContentRegionAvail().X));
                 }
                 break;
         }
@@ -280,9 +279,9 @@ public unsafe partial class UnlocksTabUtils
         var order = (uint)cardResident.Order;
         var addonRowId = isEx ? 9773u : 9772;
 
-        var infoText = $"{_seStringEvaluator.EvaluateFromAddon(addonRowId, [order]).ExtractText()} - {card.Name}";
+        var infoText = $"{_seStringEvaluator.EvaluateFromAddon(addonRowId, [order]).ToString()} - {card.Name}";
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().IndentSpacing + ImGui.GetContentRegionAvail().X / 2f - ImGui.CalcTextSize(infoText).X / 2f);
-        ImGui.TextUnformatted(infoText);
+        ImGui.Text(infoText);
 
         var cardSizeScaled = ImGuiHelpers.ScaledVector2(208, 256);
         var cardStartPosX = ImGui.GetCursorPosX() - ImGui.GetStyle().IndentSpacing + ImGui.GetContentRegionAvail().X / 2f - cardSizeScaled.X / 2f;
@@ -290,11 +289,11 @@ public unsafe partial class UnlocksTabUtils
 
         // draw background
         ImGui.SetCursorPosX(cardStartPosX);
-        _textureService.DrawPart("CardTripleTriad", 1, 0, cardSizeScaled);
+        _uldService.DrawPart("CardTripleTriad", 1, 0, cardSizeScaled);
 
         // draw card
         ImGui.SetCursorPos(cardStartPos);
-        _textureService.DrawIcon(87000 + cardId, cardSizeScaled);
+        _textureProvider.DrawIcon(87000 + cardId, cardSizeScaled);
 
         // draw numbers
         using var font = _tripleTriadNumberFont.Push();
@@ -356,7 +355,7 @@ public unsafe partial class UnlocksTabUtils
             };
 
             ImGui.SetCursorPos(cardStartPos + new Vector2(cardSizeScaled.X - typeSize * 1.5f, typeSize / 2.5f));
-            _textureService.DrawPart("CardTripleTriad", 1, partIndex, typeSize);
+            _uldService.DrawPart("CardTripleTriad", 1, partIndex, typeSize);
         }
 
         // functions
@@ -367,7 +366,7 @@ public unsafe partial class UnlocksTabUtils
             var angle = (int)pos * angleIncrement - MathF.PI / 2;
 
             ImGui.SetCursorPos(starCenter + new Vector2(starRadius * MathF.Cos(angle), starRadius * MathF.Sin(angle)));
-            _textureService.DrawPart("CardTripleTriad", 1, 1, starSize);
+            _uldService.DrawPart("CardTripleTriad", 1, 1, starSize);
         }
     }
 
@@ -383,23 +382,23 @@ public unsafe partial class UnlocksTabUtils
         // outline
         ImGui.SetCursorPos(position + ImGuiHelpers.ScaledVector2(-1));
         using (outlineColor.Push(ImGuiCol.Text))
-            ImGui.TextUnformatted(text);
+            ImGui.Text(text);
 
         ImGui.SetCursorPos(position + ImGuiHelpers.ScaledVector2(1));
         using (outlineColor.Push(ImGuiCol.Text))
-            ImGui.TextUnformatted(text);
+            ImGui.Text(text);
 
         ImGui.SetCursorPos(position + ImGuiHelpers.ScaledVector2(1, -1));
         using (outlineColor.Push(ImGuiCol.Text))
-            ImGui.TextUnformatted(text);
+            ImGui.Text(text);
 
         ImGui.SetCursorPos(position + ImGuiHelpers.ScaledVector2(-1, 1));
         using (outlineColor.Push(ImGuiCol.Text))
-            ImGui.TextUnformatted(text);
+            ImGui.Text(text);
 
         // text
         ImGui.SetCursorPos(position);
-        ImGui.TextUnformatted(text);
+        ImGui.Text(text);
     }
 
     private static void DrawShadow(Vector2 pos, Vector2 size, int layers, Vector4 shadowColor)
@@ -436,7 +435,7 @@ public unsafe partial class UnlocksTabUtils
             return true;
 
         var playerState = PlayerState.Instance();
-        if (playerState == null || playerState->IsLoaded == 0)
+        if (playerState == null || playerState->IsLoaded)
         {
             _facePaintIconCache.Add(dataId, iconId = 0);
             return false;
@@ -495,23 +494,23 @@ public unsafe partial class UnlocksTabUtils
         using var tooltip = ImRaii.Tooltip();
         if (!tooltip) return;
 
-        using var popuptable = ImRaii.Table("PopupTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var popuptable = ImRaii.Table("PopupTable"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!popuptable) return;
 
         var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
-        var title = _textService.GetItemName(item.RowId).ExtractText().StripSoftHyphen();
+        var title = _textService.GetItemName(item.RowId).ToString();
 
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
-        ImGui.TableSetupColumn("Text", ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
+        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
 
         ImGui.TableNextColumn(); // Icon
-        ImGui.Image(icon.ImGuiHandle, ImGuiHelpers.ScaledVector2(40));
+        ImGui.Image(icon.Handle, ImGuiHelpers.ScaledVector2(40));
 
         ImGui.TableNextColumn(); // Text
         using var indentSpacing = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
         using var indent = ImRaii.PushIndent(1);
 
-        ImGui.TextUnformatted(title);
+        ImGui.Text(title);
 
         if (item.Category.RowId != 0 && _excelService.TryGetRow<EventItemCategory>(item.Category.RowId, out var itemCategoy) && !itemCategoy.Unknown0.IsEmpty)
         {
@@ -525,7 +524,7 @@ public unsafe partial class UnlocksTabUtils
             {
                 ImGuiUtils.PushCursorY(-3 * ImGuiHelpers.GlobalScale);
                 using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey.ToUInt()))
-                    ImGui.TextUnformatted(text.ExtractText());
+                    ImGui.Text(text.ToString());
             }
         }
 
@@ -533,7 +532,7 @@ public unsafe partial class UnlocksTabUtils
         {
             DrawSeparator(marginTop: 1, marginBottom: 4);
 
-            ImGuiHelpers.SafeTextWrapped(itemHelp.Description.ExtractText().StripSoftHyphen());
+            ImGui.TextWrapped(itemHelp.Description.ToString());
         }
     }
 
@@ -544,14 +543,14 @@ public unsafe partial class UnlocksTabUtils
         using var tooltip = ImRaii.Tooltip();
         if (!tooltip) return;
 
-        using var popuptable = ImRaii.Table("PopupTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var popuptable = ImRaii.Table("PopupTable"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!popuptable) return;
 
         var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
         var title = _textService.GetQuestName(quest.RowId);
 
-        ImGui.TableSetupColumn("Icon", ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
-        ImGui.TableSetupColumn("Text", ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, 40 * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
+        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthFixed, Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale));
 
         ImGui.TableNextColumn(); // Icon
 
@@ -569,21 +568,21 @@ public unsafe partial class UnlocksTabUtils
             _textureProvider.TryGetFromGameIcon(eventIconType.MapIconAvailable + iconOffset, out var tex) &&
             tex.TryGetWrap(out var icon, out _))
         {
-            ImGui.Image(icon.ImGuiHandle, ImGuiHelpers.ScaledVector2(40));
+            ImGui.Image(icon.Handle, ImGuiHelpers.ScaledVector2(40));
         }
 
         ImGui.TableNextColumn(); // Text
         using var indentSpacing = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
         using var indent = ImRaii.PushIndent(1);
 
-        ImGui.TextUnformatted(title);
+        ImGui.Text(title);
 
-        var text = quest.JournalGenre.IsValid ? quest.JournalGenre.Value.Name.ExtractText() : null;
+        var text = quest.JournalGenre.IsValid ? quest.JournalGenre.Value.Name.ToString() : null;
         if (!string.IsNullOrWhiteSpace(text))
         {
             ImGuiUtils.PushCursorY(-3 * ImGuiHelpers.GlobalScale);
             using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey.ToUInt()))
-                ImGui.TextUnformatted(text);
+                ImGui.Text(text);
         }
 
         var iconId = quest.Icon;
@@ -601,15 +600,15 @@ public unsafe partial class UnlocksTabUtils
             var newWidth = ImGui.GetContentRegionAvail().X;
             var ratio = newWidth / image.Width;
             var newHeight = image.Height * ratio;
-            ImGui.Image(image.ImGuiHandle, new Vector2(newWidth, newHeight));
+            ImGui.Image(image.Handle, new Vector2(newWidth, newHeight));
         }
 
-        var questText = _excelService.GetSheet<QuestText>($"quest/{(quest.RowId - 0x10000) / 100:000}/{quest.Id.ExtractText()}");
+        var questText = _excelService.GetSheet<QuestText>($"quest/{(quest.RowId - 0x10000) / 100:000}/{quest.Id.ToString()}");
         var questSequence = QuestManager.GetQuestSequence((ushort)(quest.RowId - 0x10000));
         if (questSequence == 0xFF) questSequence = 1;
         for (var seq = questSequence == 0 ? 0 : 1; seq <= questSequence; seq++)
         {
-            if (questText.TryGetFirst(kvRow => kvRow.LuaKey.ExtractText() == $"TEXT_{quest.Id.ExtractText().ToUpper()}_SEQ_{seq:00}", out var seqText) && !seqText.Text.IsEmpty)
+            if (questText.TryGetFirst(kvRow => kvRow.LuaKey.ToString() == $"TEXT_{quest.Id.ToString().ToUpper()}_SEQ_{seq:00}", out var seqText) && !seqText.Text.IsEmpty)
             {
                 DrawSeparator(marginTop: 1, marginBottom: 4);
                 ImGuiHelpers.SeStringWrapped(_seStringEvaluator.Evaluate(seqText.Text));
@@ -625,38 +624,38 @@ public unsafe partial class UnlocksTabUtils
         using var tooltip = ImRaii.Tooltip();
         if (!tooltip) return;
 
-        using var outerpopuptable = ImRaii.Table("OuterPopupTable", 1, ImGuiTableFlags.NoPadOuterX | ImGuiTableFlags.NoPadInnerX | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var outerpopuptable = ImRaii.Table("OuterPopupTable"u8, 1, ImGuiTableFlags.NoPadOuterX | ImGuiTableFlags.NoPadInnerX | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!outerpopuptable) return;
 
         var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
         var indexStr = $"#{index:000}";
-        var title = adventure.Name.ExtractText();
+        var title = adventure.Name.ToString();
 
         var leftColumnWidth = ImGui.CalcTextSize(indexStr).X + itemInnerSpacing.X;
         var rightColumnWidth = Math.Max(ImGui.CalcTextSize(title).X + itemInnerSpacing.X, 300 * ImGuiHelpers.GlobalScale);
 
-        ImGui.TableSetupColumn("Table", ImGuiTableColumnFlags.WidthFixed, leftColumnWidth + rightColumnWidth + ImGui.GetStyle().CellPadding.X * 2); // ???
+        ImGui.TableSetupColumn("Table"u8, ImGuiTableColumnFlags.WidthFixed, leftColumnWidth + rightColumnWidth + ImGui.GetStyle().CellPadding.X * 2); // ???
 
         ImGui.TableNextColumn(); // Table
 
-        using var popuptable = ImRaii.Table("PopupTable", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        using var popuptable = ImRaii.Table("PopupTable"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
         if (!popuptable) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, leftColumnWidth);
-        ImGui.TableSetupColumn("Title", ImGuiTableColumnFlags.WidthFixed, rightColumnWidth);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, leftColumnWidth);
+        ImGui.TableSetupColumn("Title"u8, ImGuiTableColumnFlags.WidthFixed, rightColumnWidth);
 
         ImGui.TableNextColumn(); // Index
-        ImGui.TextUnformatted(indexStr);
+        ImGui.Text(indexStr);
 
         ImGui.TableNextColumn(); // Title
         using var indentSpacing = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
         using var indent = ImRaii.PushIndent(1);
-        ImGui.TextUnformatted(title);
+        ImGui.Text(title);
 
         var text = _textService.GetPlaceName(adventure.PlaceName.RowId);
         ImGuiUtils.PushCursorY(-3 * ImGuiHelpers.GlobalScale);
         using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey.ToUInt()))
-            ImGui.TextUnformatted(text);
+            ImGui.Text(text);
 
         indent.Dispose();
         indentSpacing.Dispose();
@@ -670,7 +669,7 @@ public unsafe partial class UnlocksTabUtils
             var newWidth = ImGui.GetContentRegionAvail().X;
             var ratio = newWidth / image.Width;
             var newHeight = image.Height * ratio;
-            ImGui.Image(image.ImGuiHandle, new Vector2(newWidth, newHeight));
+            ImGui.Image(image.Handle, new Vector2(newWidth, newHeight));
             iconDrawn = true;
         }
 
@@ -678,6 +677,118 @@ public unsafe partial class UnlocksTabUtils
         using var indentSpacing2 = ImRaii.PushStyle(ImGuiStyleVar.IndentSpacing, itemInnerSpacing.X);
         using var indent2 = ImRaii.PushIndent(1);
         ImGuiHelpers.SeStringWrapped(_seStringEvaluator.Evaluate(adventure.Description));
+    }
+
+    public void DrawHowToTooltip(HowTo howTo)
+    {
+        using var id = ImRaii.PushId($"HowToTooltip{howTo.RowId}");
+
+        using var tooltip = ImRaii.Tooltip();
+        if (!tooltip) return;
+
+        var itemInnerSpacing = ImGui.GetStyle().ItemInnerSpacing * ImGuiHelpers.GlobalScale;
+        const float MaxImageWidth = 200f;
+
+        using var popuptitletable = ImRaii.Table("PopupTitleTableRow"u8, 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+        if (!popuptitletable) return;
+
+        ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.GetTextLineHeight() * 2);
+        ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthStretch);
+
+        ImGui.TableNextRow();
+        ImGui.TableNextColumn(); // Icon
+
+        _uldService.DrawPart("HowTo", 8, 2, ImGui.GetTextLineHeight() * 2);
+
+        ImGui.TableNextColumn(); // Text
+
+        ImGui.Text(howTo.Name.ToString());
+
+        var category = howTo.Category.ValueNullable?.Category.ToString() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            ImGuiUtils.PushCursorY(-3 * ImGuiHelpers.GlobalScale);
+            using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey.ToUInt()))
+                ImGui.Text(category);
+        }
+
+        DrawSeparator(marginTop: 1, marginBottom: 5);
+
+        var playerState = PlayerState.Instance();
+
+        var i = 0;
+        foreach (var page in howTo.HowToPagePC)
+        {
+            if (page.RowId == 0 || !page.IsValid) continue;
+
+            if (i > 0)
+                DrawSeparator(marginTop: -1);
+
+            var iconOffsetType = page.Value.IconType switch
+            {
+                1 when playerState->IsLoaded => playerState->StartTown - 1,
+                2 when playerState->IsLoaded => playerState->GrandCompany - 1,
+                _ => 0,
+            };
+            var iconOffset = new int[] { 0, 3000, 6000 }[iconOffsetType];
+            var iconId = page.Value.Image + iconOffset;
+
+            var textIndex = page.Value.TextType switch
+            {
+                1 when playerState->IsLoaded => playerState->StartTown - 1,
+                2 when playerState->IsLoaded => playerState->GrandCompany - 1,
+                _ => 0,
+            };
+            var text = page.Value.Text[textIndex];
+
+            if (text.IsEmpty)
+            {
+                var maxWidth = Math.Max(ImGui.GetContentRegionAvail().X, 640);
+
+                if (_textureProvider.TryGetFromGameIcon(iconId, out var texture2) && texture2.TryGetWrap(out var textureWrap2, out _))
+                {
+                    var size = textureWrap2.Size;
+
+                    if (size.X > maxWidth)
+                        size *= maxWidth / size.X;
+
+                    textureWrap2.Draw(size);
+                }
+                else
+                {
+                    ImGui.Dummy(new Vector2(maxWidth, 1));
+                }
+
+                continue;
+            }
+
+            using var popuptable = ImRaii.Table($"PopupTableRow{i++}", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.NoKeepColumnsVisible);
+            if (!popuptable) return;
+
+            ImGui.TableSetupColumn("Icon"u8, ImGuiTableColumnFlags.WidthFixed, MaxImageWidth * ImGuiHelpers.GlobalScale + itemInnerSpacing.X);
+            ImGui.TableSetupColumn("Text"u8, ImGuiTableColumnFlags.WidthFixed, 360 * ImGuiHelpers.GlobalScale);
+
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn(); // Icon
+
+            if (_textureProvider.TryGetFromGameIcon(iconId, out var texture) && texture.TryGetWrap(out var textureWrap, out _))
+            {
+                var size = textureWrap.Size;
+
+                if (size.X > MaxImageWidth)
+                    size *= MaxImageWidth / size.X;
+
+                textureWrap.Draw(size * ImGuiHelpers.GlobalScale);
+            }
+            else
+            {
+                ImGui.Dummy(new Vector2(280, 1));
+            }
+
+            ImGui.TableNextColumn(); // Text
+
+            ImGuiHelpers.SeStringWrapped(_seStringEvaluator.Evaluate(text));
+        }
     }
 
     private static void DrawSeparator(float marginTop = 2, float marginBottom = 5)

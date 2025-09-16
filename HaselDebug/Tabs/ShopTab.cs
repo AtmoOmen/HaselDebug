@@ -2,7 +2,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using ImGuiNET;
+using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -21,20 +21,20 @@ public unsafe partial class ShopTab : DebugTab
     {
         if (!TryGetAddon<AddonShop>("Shop", out var addon))
         {
-            ImGui.TextUnformatted("No Shop open!");
+            ImGui.Text("No Shop open!"u8);
             return;
         }
 
         _debugRenderer.DrawPointerType(addon->List, typeof(AtkComponentList), new());
 
-        ImGui.TextUnformatted($"ItemCount: {addon->List->GetItemCount()}");
+        ImGui.Text($"ItemCount: {addon->List->GetItemCount()}");
 
         for (var i = 0; i < addon->List->GetItemCount(); i++)
         {
             var listItemRenderer = addon->List->GetItemRenderer(i);
-            ImGui.TextUnformatted($"{i}:");
+            ImGui.Text($"{i}:");
             ImGui.SameLine();
-            _debugRenderer.DrawCopyableText($"{(nint)listItemRenderer:X}");
+            ImGuiUtilsEx.DrawCopyableText($"{(nint)listItemRenderer:X}");
             ImGui.SameLine();
 
             if (addon->List->ItemRendererList[i].IsDisabled)

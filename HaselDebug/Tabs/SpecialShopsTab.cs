@@ -23,6 +23,7 @@ public unsafe partial class SpecialShopsTab : DebugTab
 [RegisterSingleton, AutoConstruct]
 public partial class SpecialShopsTable : Table<SpecialShop>
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
     private readonly SpecialShopsRowColumn _rowColumn;
 
@@ -30,15 +31,19 @@ public partial class SpecialShopsTable : Table<SpecialShop>
     public void Initialize()
     {
         Columns = [
-            RowIdColumn<SpecialShop>.Create(),
+            RowIdColumn<SpecialShop>.Create(_serviceProvider),
             _rowColumn,
         ];
+    }
+
+    public override float CalculateLineHeight()
+    {
+        return 0;
     }
 
     public override void LoadRows()
     {
         Rows = [.. _excelService.GetSheet<SpecialShop>()];
-        LineHeight = 0;
     }
 }
 
@@ -49,11 +54,11 @@ public partial class SpecialShopsRowColumn : ColumnString<SpecialShop>
 
     public override string ToName(SpecialShop row)
     {
-        return row.Name.ExtractText();
+        return row.Name.ToString();
     }
 
     public override void DrawColumn(SpecialShop row)
     {
-        _debugRenderer.DrawExdRow(typeof(SpecialShop), row.RowId, 0, new Utils.NodeOptions() { Title = row.Name.ExtractText() });
+        _debugRenderer.DrawExdRow(typeof(SpecialShop), row.RowId, 0, new Utils.NodeOptions() { Title = row.Name.ToString() });
     }
 }

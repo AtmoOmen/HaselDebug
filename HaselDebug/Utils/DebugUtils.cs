@@ -1,14 +1,17 @@
+using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselCommon.Graphics;
-using ImGuiNET;
 using InteropGenerator.Runtime.Attributes;
 
 namespace HaselDebug.Utils;
 
 public static unsafe class DebugUtils
 {
+    private static readonly Dictionary<(Type, Type), bool> InheritsCache = [];
+
     public static bool Inherits<T>(Type pointerType) where T : struct
     {
         var targetType = typeof(T);
@@ -16,6 +19,9 @@ public static unsafe class DebugUtils
 
         if (currentType == targetType)
             return true;
+
+        if (InheritsCache.TryGetValue((pointerType, targetType), out var result))
+            return result;
 
         do
         {
@@ -50,7 +56,9 @@ public static unsafe class DebugUtils
 
         } while (currentType != targetType);
 
-        return currentType == targetType;
+        result = currentType == targetType;
+        InheritsCache.TryAdd((pointerType, targetType), result);
+        return result;
     }
 
     public static void HighlightNode(AtkResNode* node)
@@ -58,8 +66,13 @@ public static unsafe class DebugUtils
         if (node == null)
             return;
 
+        var scale = 1f;
+        var addon = RaptureAtkUnitManager.Instance()->GetAddonByNode(node);
+        if (addon != null)
+            scale *= addon->Scale;
+
         var pos = new Vector2(node->ScreenX, node->ScreenY);
-        var size = new Vector2(node->Width, node->Height);
+        var size = new Vector2(node->Width, node->Height) * scale;
         ImGui.GetForegroundDrawList().AddRect(pos, pos + size, Color.Gold.ToUInt());
     }
 }

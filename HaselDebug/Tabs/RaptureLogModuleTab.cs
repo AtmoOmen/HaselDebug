@@ -4,7 +4,6 @@ using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -18,8 +17,8 @@ public unsafe class RaptureLogModuleTab : DebugTab
     {
         var raptureLogModule = RaptureLogModule.Instance();
 
-        ImGui.TextUnformatted($"CurrentLogIndex: {raptureLogModule->LogModule.LogMessageIndex}");
-        ImGui.TextUnformatted($"LogMessageCount: {raptureLogModule->LogModule.LogMessageCount}");
+        ImGui.Text($"CurrentLogIndex: {raptureLogModule->LogModule.LogMessageIndex}");
+        ImGui.Text($"LogMessageCount: {raptureLogModule->LogModule.LogMessageCount}");
 
         if (ImGui.Button("Clear"))
         {
@@ -51,7 +50,7 @@ public unsafe class RaptureLogModuleTab : DebugTab
         var index = 0;
         foreach (var message in _messages)
         {
-            ImGui.TextUnformatted($"[{index++}] {message}");
+            ImGui.Text($"[{index++}] {message}");
         }
     }
 }

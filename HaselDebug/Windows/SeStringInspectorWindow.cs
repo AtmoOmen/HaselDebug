@@ -5,6 +5,7 @@ using Dalamud.Game;
 using Dalamud.Game.Text.Evaluator;
 using Dalamud.Interface.ImGuiSeStringRenderer;
 using Dalamud.Interface.Utility;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -14,7 +15,6 @@ using HaselCommon.Services;
 using HaselCommon.Utils;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Text.Expressions;
 using Lumina.Text.Parse;
 using Lumina.Text.ReadOnly;
@@ -29,17 +29,19 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
 
     private WindowManager _windowManager;
     private DebugRenderer _debugRenderer;
-    private SeStringEvaluator _seStringEvaluator;
+    private ISeStringEvaluator _seStringEvaluator;
 
     private SeStringParameter[]? _localParameters = null;
     private string _macroString = string.Empty;
+    private ReadOnlySeString _string;
+    private Utf8String* _utf8string;
 
     public ReadOnlySeString String
     {
-        get;
+        get => _string;
         set
         {
-            field = value;
+            _string = value;
             _localParameters = null;
         }
     }
@@ -51,10 +53,10 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
     public AtkResNode* Node { get; set; }
     public Utf8String* Utf8String
     {
-        get;
+        get => _utf8string;
         set
         {
-            field = value;
+            _utf8string = value;
             _macroString = value != null ? new ReadOnlySeStringSpan(value->AsSpan()).ToString() : string.Empty;
         }
     }
@@ -69,7 +71,7 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
     {
         _windowManager = _serviceProvider.GetRequiredService<WindowManager>();
         _debugRenderer = _serviceProvider.GetRequiredService<DebugRenderer>();
-        _seStringEvaluator = _serviceProvider.GetRequiredService<SeStringEvaluator>();
+        _seStringEvaluator = _serviceProvider.GetRequiredService<ISeStringEvaluator>();
     }
 
     public override void OnOpen()
@@ -155,7 +157,7 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
         {
             if (_localParameters[i].IsString)
             {
-                var str = _localParameters[i].StringValue.ExtractText();
+                var str = _localParameters[i].StringValue.ToString();
                 if (ImGui.InputText($"lstr({i + 1})", ref str, 255))
                 {
                     _localParameters[i] = new(str);

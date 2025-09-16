@@ -4,7 +4,6 @@ using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 
 namespace HaselDebug.Services;
 
@@ -14,14 +13,14 @@ public unsafe partial class DebugRenderer
     {
         if (*(nint*)address == 0)
         {
-            ImGui.TextUnformatted("Not initialized");
+            ImGui.Text("Not initialized"u8);
             return;
         }
 
         var elementCount = *(uint*)(address + 0x10);
         if (elementCount == 0)
         {
-            ImGui.TextUnformatted("No values");
+            ImGui.Text("No values"u8);
             return;
         }
 
@@ -37,7 +36,7 @@ public unsafe partial class DebugRenderer
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == "0x" + address.ToString("X")),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, address, typeof(StdList<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
+                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_windowManager, _textService, _addonObserver, _serviceProvider, address, typeof(StdList<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
                 });
             }
         });
@@ -61,7 +60,7 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("StdLinkedListTable"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -71,7 +70,7 @@ public unsafe partial class DebugRenderer
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Value
             DrawPointerType(_current, valueType, new NodeOptions()

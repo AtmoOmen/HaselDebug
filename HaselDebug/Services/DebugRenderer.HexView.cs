@@ -4,7 +4,6 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Memory;
 using HaselCommon.Graphics;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Services;
 
@@ -28,12 +27,12 @@ public unsafe partial class DebugRenderer
 
         using var font = ImRaii.PushFont(UiBuilder.MonoFont);
 
-        ImGui.TableSetupColumn("Address", ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize(address.ToString("X")).X);
+        ImGui.TableSetupColumn("Address"u8, ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize(address.ToString("X")).X);
 
         for (var column = 0; column < numColumns; column++)
             ImGui.TableSetupColumn(column.ToString("X"), ImGuiTableColumnFlags.WidthFixed, 14 + (column % 8 == 7 ? 3 : 0));
 
-        ImGui.TableSetupColumn("Data", ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Data"u8, ImGuiTableColumnFlags.WidthFixed);
 
         ImGui.TableHeadersRow();
 
@@ -44,7 +43,7 @@ public unsafe partial class DebugRenderer
             ImGui.TableNextColumn();
 
             using (ImRaii.PushColor(ImGuiCol.Text, Color.Grey3.ToUInt()))
-                DrawCopyableText($"{address + line * numColumns:X}", asSelectable: true);
+                ImGuiUtilsEx.DrawCopyableText($"{address + line * numColumns:X}", asSelectable: true);
 
             var colpos = pos;
             for (var column = 0; column < numColumns; column++)
@@ -52,7 +51,7 @@ public unsafe partial class DebugRenderer
                 ImGui.TableNextColumn();
                 if (colpos++ < length)
                 {
-                    DrawCopyableText(
+                    ImGuiUtilsEx.DrawCopyableText(
                         $"{*(byte*)(address + line * numColumns + column):X2}",
                         $"{address + line * numColumns + column:X}",
                         asSelectable: true);
@@ -71,7 +70,7 @@ public unsafe partial class DebugRenderer
             }
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(sb.ToString());
+            ImGui.Text(sb.ToString());
 
             pos += numColumns;
             if (pos > length)

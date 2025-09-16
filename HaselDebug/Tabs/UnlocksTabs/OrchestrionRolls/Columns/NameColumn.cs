@@ -1,8 +1,6 @@
-using Dalamud.Utility;
 using HaselCommon.Graphics;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.OrchestrionRolls.Columns;
 
@@ -18,7 +16,7 @@ public partial class NameColumn : ColumnString<OrchestrionRollEntry>
     }
 
     public override string ToName(OrchestrionRollEntry entry)
-        => entry.Row.Name.ExtractText().StripSoftHyphen();
+        => entry.Row.Name.ToString();
 
     public override unsafe void DrawColumn(OrchestrionRollEntry entry)
     {

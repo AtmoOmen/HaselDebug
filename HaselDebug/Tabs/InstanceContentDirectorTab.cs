@@ -7,7 +7,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 using Lumina.Text.ReadOnly;
 using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
@@ -30,7 +29,7 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
         {
             foreach (var ((name, type), vtableAddr) in InstanceContentTypeVtables)
             {
-                _debugRenderer.DrawCopyableText($"{type}: {name} @", $"+0x{vtableAddr - _sigScanner.Module.BaseAddress:X} - {name}");
+                ImGuiUtilsEx.DrawCopyableText($"{type}: {name} @", $"+0x{vtableAddr - _sigScanner.Module.BaseAddress:X} - {name}");
                 ImGui.SameLine();
                 _debugRenderer.DrawAddress(vtableAddr);
             }
@@ -42,19 +41,19 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
         {
             if (directorPtr.Value == null) continue;
             if ((uint)directorPtr.Value->EventHandlerInfo->EventId.ContentId > 0x8000)
-                ImGui.TextUnformatted($"[{directorPtr.Value->EventHandlerInfo->EventId.ContentId}:{directorPtr.Value->EventHandlerInfo->EventId.EntryId}]");
+                ImGui.Text($"[{directorPtr.Value->EventHandlerInfo->EventId.ContentId}:{directorPtr.Value->EventHandlerInfo->EventId.EntryId}]");
             else
-                ImGui.TextUnformatted($"[{directorPtr.Value->EventHandlerInfo->EventId.ContentId}]");
+                ImGui.Text($"[{directorPtr.Value->EventHandlerInfo->EventId.ContentId}]");
             ImGui.SameLine();
             _debugRenderer.DrawPointerType(directorPtr.Value, typeof(Director), new NodeOptions() { AddressPath = new([1, (nint)directorPtr.Value]) });
         }
 
-        ImGui.TextUnformatted("ContentDirector:");
+        ImGui.Text("ContentDirector:"u8);
         ImGui.SameLine();
         var contentDirector = EventFramework.Instance()->GetContentDirector();
         if (contentDirector == null)
         {
-            ImGui.TextUnformatted("None active");
+            ImGui.Text("None active"u8);
         }
         else
         {
@@ -63,12 +62,12 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
 
         ImGui.Separator();
 
-        ImGui.TextUnformatted("CraftLeveEventHandler:");
+        ImGui.Text("CraftLeveEventHandler:"u8);
         ImGui.SameLine();
         var craftLeveEventHandler = EventFramework.Instance()->EventHandlerModule.CraftLeveEventHandler;
         if (craftLeveEventHandler == null)
         {
-            ImGui.TextUnformatted("None active");
+            ImGui.Text("None active"u8);
         }
         else
         {
@@ -77,12 +76,12 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
 
         ImGui.Separator();
 
-        ImGui.TextUnformatted("PublicContentDirector:");
+        ImGui.Text("PublicContentDirector:"u8);
         ImGui.SameLine();
         var publicContentDirector = EventFramework.Instance()->GetPublicContentDirector();
         if (publicContentDirector == null)
         {
-            ImGui.TextUnformatted("None active");
+            ImGui.Text("None active"u8);
         }
         else
         {
@@ -91,12 +90,12 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
 
         ImGui.Separator();
 
-        ImGui.TextUnformatted("InstanceContentDirector:");
+        ImGui.Text("InstanceContentDirector:"u8);
         ImGui.SameLine();
         var instanceContentDirector = EventFramework.Instance()->GetInstanceContentDirector();
         if (instanceContentDirector == null)
         {
-            ImGui.TextUnformatted("None active");
+            ImGui.Text("None active"u8);
         }
         else
         {

@@ -1,9 +1,9 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using HaselCommon.Graphics;
 using HaselCommon.Gui;
-using HaselDebug.Services;
-using ImGuiNET;
 
 namespace HaselDebug.Utils;
 
@@ -11,26 +11,38 @@ public static unsafe class ImGuiUtilsEx
 {
     public static bool EnumCombo<T>(string label, ref T refValue, bool flagCombo = false) where T : Enum
     {
-        using var combo = ImRaii.Combo(label, refValue.ToString());
-        if (!combo) return false;
-
         if (flagCombo)
         {
-            foreach (Enum enumValue in Enum.GetValues(refValue.GetType()))
+            var size = typeof(T).GetEnumUnderlyingType().SizeOf();
+            var names = new List<string>();
+
+            for (var bit = 0; bit < size * 8; bit++)
             {
-                if (ImGui.Selectable(enumValue.ToString(), refValue.HasFlag(enumValue)))
+                var intRefValue = Convert.ToInt32(refValue);
+                var intFlagValue = 1 << bit;
+                var hasFlag = (intRefValue & intFlagValue) != 0;
+                if (hasFlag)
+                    names.Add(Enum.GetName(refValue.GetType(), intFlagValue) ?? $"Unk{bit}");
+            }
+
+            using var combo = ImRaii.Combo(label, string.Join(", ", names), ImGuiComboFlags.HeightLarge);
+            if (!combo) return false;
+
+            for (var bit = 0; bit < size * 8; bit++)
+            {
+                var intRefValue = Convert.ToInt32(refValue);
+                var intFlagValue = 1 << bit;
+                var hasFlag = (intRefValue & intFlagValue) != 0;
+
+                if (ImGui.Selectable($"[{bit}] {Enum.GetName(refValue.GetType(), intFlagValue) ?? $"Unk{bit}"}", hasFlag))
                 {
-                    if (!refValue.HasFlag(enumValue))
+                    if (!hasFlag)
                     {
-                        var intRefValue = Convert.ToInt32(refValue);
-                        var intFlagValue = Convert.ToInt32(enumValue);
                         var result = intRefValue | intFlagValue;
                         refValue = (T)Enum.ToObject(refValue.GetType(), result);
                     }
                     else
                     {
-                        var intRefValue = Convert.ToInt32(refValue);
-                        var intFlagValue = Convert.ToInt32(enumValue);
                         var result = intRefValue & ~intFlagValue;
                         refValue = (T)Enum.ToObject(refValue.GetType(), result);
                     }
@@ -41,6 +53,9 @@ public static unsafe class ImGuiUtilsEx
         }
         else
         {
+            using var combo = ImRaii.Combo(label, refValue.ToString(), ImGuiComboFlags.HeightLarge);
+            if (!combo) return false;
+
             foreach (Enum enumValue in Enum.GetValues(refValue.GetType()))
             {
                 if (!ImGui.Selectable(enumValue.ToString(), enumValue.Equals(refValue))) continue;
@@ -64,7 +79,7 @@ public static unsafe class ImGuiUtilsEx
         return $"{texPath} | U: {part.U} V: {part.V} | W: {part.Width} H: {part.Height}";
     }
 
-    public static bool PartListSelector(AtkUldPartsList* partsList, ref uint partId)
+    public static bool PartListSelector(IServiceProvider serviceProvider, AtkUldPartsList* partsList, ref uint partId)
     {
         if (partsList == null || partId > partsList->PartCount)
             return false;
@@ -108,8 +123,7 @@ public static unsafe class ImGuiUtilsEx
 
         if (texType == TextureType.Resource)
         {
-            if (Service.TryGet<DebugRenderer>(out var debugRenderer))
-                debugRenderer.DrawCopyableText(textureInfo->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString());
+            DrawCopyableText(textureInfo->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString());
 
             /* explodes
             if (textureInfo->AtkTexture.Resource->IconId != 0)
@@ -131,7 +145,7 @@ public static unsafe class ImGuiUtilsEx
             if (treeNode)
             {
                 ImGui.Image(
-                    (nint)kernelTexture->D3D11ShaderResourceView,
+                    new ImTextureID(kernelTexture->D3D11ShaderResourceView),
                     new Vector2(
                         kernelTexture->ActualWidth,
                         kernelTexture->ActualHeight));
@@ -146,7 +160,7 @@ public static unsafe class ImGuiUtilsEx
             if (treeNode)
             {
                 ImGui.Image(
-                    (nint)textureInfo->AtkTexture.KernelTexture->D3D11ShaderResourceView,
+                    new ImTextureID(textureInfo->AtkTexture.KernelTexture->D3D11ShaderResourceView),
                     new Vector2(
                         textureInfo->AtkTexture.KernelTexture->ActualWidth,
                         textureInfo->AtkTexture.KernelTexture->ActualHeight));
@@ -158,16 +172,15 @@ public static unsafe class ImGuiUtilsEx
 
     public static void PrintFieldValuePair(string fieldName, string value, bool copy = true)
     {
-        ImGui.TextUnformatted(fieldName + ":");
+        ImGui.Text(fieldName + ":");
         ImGuiUtils.SameLineSpace();
         if (copy)
         {
-            if (Service.TryGet<DebugRenderer>(out var debugRenderer))
-                debugRenderer.DrawCopyableText(value);
+            DrawCopyableText(value);
         }
         else
         {
-            ImGui.TextUnformatted(value);
+            ImGui.Text(value);
         }
     }
 
@@ -178,7 +191,7 @@ public static unsafe class ImGuiUtilsEx
             if (i != 0)
             {
                 ImGui.SameLine();
-                ImGui.TextUnformatted("\u2022");
+                ImGui.Text("\u2022"u8);
                 ImGui.SameLine();
             }
 
@@ -199,5 +212,52 @@ public static unsafe class ImGuiUtilsEx
         {
             ImGui.Dummy(new(padding * ImGui.GetIO().FontGlobalScale));
         }
+    }
+
+    public static void DrawCopyableText(string text, string? textCopy = null, string? tooltipText = null, bool asSelectable = false, Color? textColor = null, string? highligtedText = null, bool noTooltip = false)
+    {
+        textCopy ??= text;
+
+        using var color = textColor?.Push(ImGuiCol.Text);
+
+        if (asSelectable)
+        {
+            ImGui.Selectable(text);
+        }
+        else if (!string.IsNullOrEmpty(highligtedText))
+        {
+            var pos = text.IndexOf(highligtedText, StringComparison.InvariantCultureIgnoreCase);
+            if (pos != -1)
+            {
+                ImGui.Text(text[..pos]);
+                ImGui.SameLine(0, 0);
+
+                using (Color.Yellow.Push(ImGuiCol.Text))
+                    ImGui.Text(text[pos..(pos + highligtedText.Length)]);
+
+                ImGui.SameLine(0, 0);
+                ImGui.Text(text[(pos + highligtedText.Length)..]);
+            }
+            else
+            {
+                ImGui.Text(text);
+            }
+        }
+        else
+        {
+            ImGui.Text(text);
+        }
+
+        color?.Pop();
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+            if (!noTooltip)
+                ImGui.SetTooltip(tooltipText ?? textCopy);
+        }
+
+        if (ImGui.IsItemClicked())
+            ImGui.SetClipboardText(textCopy);
     }
 }

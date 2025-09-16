@@ -1,6 +1,5 @@
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Bardings.Columns;
@@ -11,7 +10,7 @@ public partial class ItemColumn : ColumnString<BuddyEquip>
     private readonly DebugRenderer _debugRenderer;
 
     public override string ToName(BuddyEquip row)
-        => row.Name.ExtractText();
+        => row.Name.ToString();
 
     public override unsafe void DrawColumn(BuddyEquip row)
     {
@@ -20,6 +19,6 @@ public partial class ItemColumn : ColumnString<BuddyEquip>
             : row.IconHead != 0
                 ? row.IconHead
                 : row.IconLegs);
-        ImGui.TextUnformatted(row.Name.ExtractText());
+        ImGui.Text(row.Name.ToString());
     }
 }

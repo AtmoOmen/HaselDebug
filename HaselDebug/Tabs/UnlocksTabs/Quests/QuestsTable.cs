@@ -2,7 +2,6 @@ using System.Linq;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Tabs.UnlocksTabs.Quests.Columns;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Quests;
@@ -10,6 +9,7 @@ namespace HaselDebug.Tabs.UnlocksTabs.Quests;
 [RegisterSingleton, AutoConstruct]
 public partial class QuestsTable : Table<Quest>, IDisposable
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
     private readonly QuestIdColumn _questIdColumn;
     private readonly QuestStatusColumn _questStatusColumn;
@@ -21,7 +21,7 @@ public partial class QuestsTable : Table<Quest>, IDisposable
     public void Initialize()
     {
         Columns = [
-            RowIdColumn<Quest>.Create(),
+            RowIdColumn<Quest>.Create(_serviceProvider),
             _questIdColumn,
             _questStatusColumn,
             _repeatableColumn,

@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Text;
 using Dalamud.Interface.Utility;
-using Dalamud.Utility;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
@@ -12,7 +12,6 @@ using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Sheets;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
 
@@ -21,8 +20,8 @@ public partial class ItemsColumn : ColumnString<CustomMirageStoreSetItem>
 {
     private const float IconSize = OutfitsTable.IconSize;
 
+    private readonly ITextureProvider _textureProvider;
     private readonly TextService _textService;
-    private readonly TextureService _textureService;
     private readonly ImGuiContextMenuService _imGuiContextMenuService;
     private readonly ExcelService _excelService;
     private readonly UnlocksTabUtils _unlocksTabUtils;
@@ -40,7 +39,7 @@ public partial class ItemsColumn : ColumnString<CustomMirageStoreSetItem>
         _stringBuilder.Clear();
 
         for (var i = 1; i < row.Items.Count; i++)
-            _stringBuilder.AppendLine(_textService.GetItemName(row.Items[i].RowId).ExtractText().StripSoftHyphen());
+            _stringBuilder.AppendLine(_textService.GetItemName(row.Items[i].RowId).ToString());
 
         return _stringBuilder.ToString();
     }
@@ -77,9 +76,8 @@ public partial class ItemsColumn : ColumnString<CustomMirageStoreSetItem>
             var afterIconPos = ImGui.GetCursorPos();
             ImGui.SameLine(0, 0);
             ImGuiUtils.PushCursorX(-IconSize * ImGuiHelpers.GlobalScale);
-            _textureService.DrawIcon(
-                item.Value.Icon,
-                false,
+            _textureProvider.DrawIcon(
+                (uint)item.Value.Icon,
                 new(IconSize * ImGuiHelpers.GlobalScale)
                 {
                     TintColor = isSetCollected || isItemCollected || isItemInInventory

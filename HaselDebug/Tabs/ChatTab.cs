@@ -1,11 +1,11 @@
 using Dalamud.Interface.Utility.Raii;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 using Lumina.Text.ReadOnly;
 
@@ -17,7 +17,7 @@ public unsafe partial class ChatTab : DebugTab
     private readonly DebugRenderer _debugRenderer;
     private readonly ExcelService _excelService;
     private readonly TextService _textService;
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
 
     public override void Draw()
     {
@@ -36,25 +36,25 @@ public unsafe partial class ChatTab : DebugTab
         var start = *(int*)((nint)raptureLogModule + 0x18);
         var count = raptureLogModule->LogMessageCount - start;
 
-        ImGui.TextUnformatted($"{count} Message");
+        ImGui.Text($"{count} Message");
 
-        using var table = ImRaii.Table("ChatTabTable", 5, ImGuiTableFlags.Resizable | ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("ChatTabTable"u8, 5, ImGuiTableFlags.Resizable | ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
         if (!table)
             return;
 
-        ImGui.TableSetupColumn("Timestamp", ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("LogKind", ImGuiTableColumnFlags.WidthFixed, 50);
-        ImGui.TableSetupColumn("Caster", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("Formatted Message", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Timestamp"u8, ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("LogKind"u8, ImGuiTableColumnFlags.WidthFixed, 50);
+        ImGui.TableSetupColumn("Caster"u8, ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn("Target"u8, ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn("Formatted Message"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableSetupScrollFreeze(5, 1);
         ImGui.TableHeadersRow();
 
-        var imGuiListClipperPtr = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-        imGuiListClipperPtr.Begin(count, ImGui.GetTextLineHeightWithSpacing());
-        while (imGuiListClipperPtr.Step())
+        var clipper = ImGui.ImGuiListClipper();
+        clipper.Begin(count, ImGui.GetTextLineHeightWithSpacing());
+        while (clipper.Step())
         {
-            for (var i = imGuiListClipperPtr.DisplayStart; i < imGuiListClipperPtr.DisplayEnd; i++)
+            for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
             {
                 if (i >= count)
                     return;
@@ -64,16 +64,16 @@ public unsafe partial class ChatTab : DebugTab
                     ImGui.TableNextRow();
 
                     ImGui.TableNextColumn(); // Timestamp
-                    ImGui.TextUnformatted(DateTimeOffset.FromUnixTimeSeconds(time).LocalDateTime.ToString());
+                    ImGui.Text(DateTimeOffset.FromUnixTimeSeconds(time).LocalDateTime.ToString());
 
                     ImGui.TableNextColumn(); // LogKind
-                    ImGui.TextUnformatted(logKind.ToString());
+                    ImGui.Text(logKind.ToString());
 
                     ImGui.TableNextColumn(); // Caster
-                    ImGui.TextUnformatted(GetLabel(casterKind));
+                    ImGui.Text(GetLabel(casterKind));
 
                     ImGui.TableNextColumn(); // Target
-                    ImGui.TextUnformatted(GetLabel(targetKind));
+                    ImGui.Text(GetLabel(targetKind));
 
                     ImGui.TableNextColumn(); // Formatted Message
                     var senderEvaluated = _seStringEvaluator.Evaluate((ReadOnlySeStringSpan)sender);
@@ -94,8 +94,8 @@ public unsafe partial class ChatTab : DebugTab
             }
         }
 
-        imGuiListClipperPtr.End();
-        imGuiListClipperPtr.Destroy();
+        clipper.End();
+        clipper.Destroy();
     }
 
     private string GetLabel(int index)

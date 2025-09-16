@@ -14,7 +14,7 @@ using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Tabs;
 
@@ -59,12 +59,12 @@ public unsafe partial class AgentsTab : DebugTab
         var hasSearchTermChanged = ImGui.InputTextWithHint("##TextSearch", _textService.Translate("SearchBar.Hint"), ref _agentNameSearchTerm, 256, ImGuiInputTextFlags.AutoSelectAll);
         var hasSearchTerm = !string.IsNullOrWhiteSpace(_agentNameSearchTerm);
 
-        using var table = ImRaii.Table("AgentsTable", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
+        using var table = ImRaii.Table("AgentsTable"u8, 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(300, -1));
         if (!table) return;
 
-        ImGui.TableSetupColumn("Id", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Id"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Name");
-        ImGui.TableSetupColumn("Active", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Active"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
 
@@ -75,16 +75,19 @@ public unsafe partial class AgentsTab : DebugTab
             var agent = agentModule->Agents[i];
             var agentId = (AgentId)i;
             var (agentName, isAgentNameAddonName) = GetAgentName(agentId);
+            var isActive = agent.Value->IsAgentActive();
 
             if (hasSearchTerm && !agentName.Contains(_agentNameSearchTerm, StringComparison.InvariantCultureIgnoreCase))
                 continue;
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Id
-            ImGui.TextUnformatted(i.ToString());
+            using (Color.Green.Push(ImGuiCol.Text, isActive))
+                ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Name
 
+            using (Color.Green.Push(ImGuiCol.Text, isActive))
             using (Color.Yellow.Push(ImGuiCol.Text, isAgentNameAddonName))
             {
                 if (ImGui.Selectable(agentName + $"###AgentSelectable{i}", _selectedAgentId == agentId, ImGuiSelectableFlags.SpanAllColumns))
@@ -97,8 +100,7 @@ public unsafe partial class AgentsTab : DebugTab
                 if (!_debugRenderer.AgentTypes.TryGetValue(agentId, out var agentType))
                     agentType = typeof(AgentInterface);
 
-                var pinnedInstances = Service.Get<PinnedInstancesService>();
-                var isPinned = pinnedInstances.Contains(agentType);
+                var isPinned = _pinnedInstances.Contains(agentType);
 
                 builder.AddCopyName(_textService, agentId.ToString());
                 builder.AddCopyAddress(_textService, (nint)agent.Value);
@@ -109,33 +111,48 @@ public unsafe partial class AgentsTab : DebugTab
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == agentType.Name),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, (nint)agent.Value, agentType, string.Empty))
+                    ClickCallback = () => _windowManager.Open(ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)agent.Value, agentType, string.Empty))
                 });
 
                 builder.Add(new ImGuiContextMenuEntry()
                 {
                     Visible = !isPinned,
                     Label = _textService.Translate("ContextMenu.PinnedInstances.Pin"),
-                    ClickCallback = () => pinnedInstances.Add((nint)agent.Value, agentType)
+                    ClickCallback = () => _pinnedInstances.Add((nint)agent.Value, agentType)
                 });
 
                 builder.Add(new ImGuiContextMenuEntry()
                 {
                     Visible = isPinned,
                     Label = _textService.Translate("ContextMenu.PinnedInstances.Unpin"),
-                    ClickCallback = () => pinnedInstances.Remove(agentType)
+                    ClickCallback = () => _pinnedInstances.Remove(agentType)
+                });
+
+                builder.Add(new ImGuiContextMenuEntry()
+                {
+                    Visible = agent.Value->IsActivatable() && !agent.Value->IsAddonShown(),
+                    Label = _textService.Translate("ContextMenu.Agent.Show"),
+                    ClickCallback = () => agent.Value->Show()
+                });
+
+                builder.Add(new ImGuiContextMenuEntry()
+                {
+                    Visible = agent.Value->IsActivatable() && agent.Value->IsAddonShown(),
+                    Label = _textService.Translate("ContextMenu.Agent.Hide"),
+                    ClickCallback = () => agent.Value->Hide()
                 });
             });
 
             ImGui.TableNextColumn(); // Active
-            ImGui.TextUnformatted(agent.Value->IsAgentActive().ToString());
+            using (Color.Green.Push(ImGuiCol.Text, isActive))
+                ImGui.Text(isActive.ToString());
         }
     }
 
     private (string, bool) GetAgentName(AgentId agentId)
     {
         var name = Enum.GetName(agentId);
-        if (!string.IsNullOrEmpty(name))
+        if (!string.IsNullOrEmpty(name) && !name.StartsWith("Unk"))
             return (name, false);
 
         if (TryGetAddon<AtkUnitBase>(agentId, out var addon) && !string.IsNullOrEmpty(addon->NameString))
@@ -164,7 +181,7 @@ public unsafe partial class AgentsTab : DebugTab
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == agentType.Name),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, (nint)agent, agentType, string.Empty))
+                    ClickCallback = () => _windowManager.Open(ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)agent, agentType, string.Empty))
                 });
 
                 builder.Add(new ImGuiContextMenuEntry()

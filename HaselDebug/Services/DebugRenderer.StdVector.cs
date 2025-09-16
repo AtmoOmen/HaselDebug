@@ -1,11 +1,9 @@
 using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.STD;
-using HaselCommon.Extensions;
 using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 
 namespace HaselDebug.Services;
 
@@ -16,7 +14,7 @@ public unsafe partial class DebugRenderer
         var size = valueType.SizeOf();
         if (size == 0)
         {
-            ImGui.TextUnformatted($"Can't get size of {valueType.Name}");
+            ImGui.Text($"Can't get size of {valueType.Name}");
             return;
         }
 
@@ -25,7 +23,7 @@ public unsafe partial class DebugRenderer
         var elementCount = (lastElement - firstElement) / size;
         if (elementCount == 0)
         {
-            ImGui.TextUnformatted("No values");
+            ImGui.Text("No values"u8);
             return;
         }
 
@@ -41,7 +39,7 @@ public unsafe partial class DebugRenderer
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == "0x" + address.ToString("X")),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, address, typeof(StdVector<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
+                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_windowManager, _textService, _addonObserver, _serviceProvider, address, typeof(StdVector<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
                 });
             }
         });
@@ -54,7 +52,7 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("StdVectorTable"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -63,7 +61,7 @@ public unsafe partial class DebugRenderer
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Value
             DrawPointerType((nint)(firstElement + i * size), valueType, new NodeOptions() { AddressPath = nodeOptions.AddressPath, IsIconIdField = nodeOptions.IsIconIdField });

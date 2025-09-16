@@ -7,7 +7,6 @@ using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Sheets;
 using HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits;
@@ -16,9 +15,10 @@ namespace HaselDebug.Tabs.UnlocksTabs.Outfits;
 public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
 {
     public const float IconSize = 32;
+
+    private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
     private readonly ItemService _itemService;
-    private readonly GlobalScaleObserver _globalScaleObserver;
     private readonly SetColumn _setColumn;
     private readonly ItemsColumn _itemsColumn;
 
@@ -26,26 +26,17 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
     public void Initialize()
     {
         Columns = [
-            RowIdColumn<CustomMirageStoreSetItem>.Create(),
+            RowIdColumn<CustomMirageStoreSetItem>.Create(_serviceProvider),
             _setColumn,
             _itemsColumn,
         ];
 
         Flags |= ImGuiTableFlags.SortTristate;
-
-        _globalScaleObserver.ScaleChanged += OnScaleChanged;
-        OnScaleChanged(ImGuiHelpers.GlobalScale);
     }
 
-    public new void Dispose()
+    public override float CalculateLineHeight()
     {
-        _globalScaleObserver.ScaleChanged -= OnScaleChanged;
-        base.Dispose();
-    }
-
-    private void OnScaleChanged(float scale)
-    {
-        LineHeight = IconSize * scale + ImGui.GetStyle().ItemSpacing.Y; // I honestly don't know why using ItemSpacing here works
+        return IconSize * ImGuiHelpers.GlobalScaleSafe + ImGui.GetStyle().ItemSpacing.Y; // I honestly don't know why using ItemSpacing here works
     }
 
     public override void LoadRows()
@@ -85,7 +76,7 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
         if (textureProvider.GetFromGame("ui/uld/RecipeNoteBook_hr1.tex").TryGetWrap(out var tex, out _))
         {
             var pos = ImGui.GetWindowPos() + ImGui.GetCursorPos() - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY()) + ImGuiHelpers.ScaledVector2(IconSize / 2.5f + 4);
-            ImGui.GetWindowDrawList().AddImage(tex.ImGuiHandle, pos, pos + ImGuiHelpers.ScaledVector2(IconSize) / 1.5f, new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
+            ImGui.GetWindowDrawList().AddImage(tex.Handle, pos, pos + ImGuiHelpers.ScaledVector2(IconSize) / 1.5f, new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
         }
     }
 }

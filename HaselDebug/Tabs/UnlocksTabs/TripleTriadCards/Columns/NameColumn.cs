@@ -1,5 +1,4 @@
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Graphics;
@@ -7,7 +6,6 @@ using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.TripleTriadCards.Columns;
@@ -17,7 +15,7 @@ public partial class NameColumn : ColumnString<TripleTriadCardEntry>
 {
     private readonly DebugRenderer _debugRenderer;
     private readonly ExcelService _excelService;
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
     private readonly MapService _mapService;
     private readonly UnlocksTabUtils _unlocksTabUtils;
     private readonly ITextureProvider _textureProvider;
@@ -29,7 +27,7 @@ public partial class NameColumn : ColumnString<TripleTriadCardEntry>
     }
 
     public override string ToName(TripleTriadCardEntry entry)
-        => entry.Row.Name.ExtractText().StripSoftHyphen();
+        => entry.Row.Name.ToString();
 
     public string ToSearchName(TripleTriadCardEntry entry)
     {
@@ -43,7 +41,7 @@ public partial class NameColumn : ColumnString<TripleTriadCardEntry>
             str += "\n" + _seStringEvaluator.EvaluateFromAddon(obtainRow.Text.RowId, [
                 residentRow.Acquisition.RowId,
                     residentRow.Location.RowId
-            ]).ExtractText();
+            ]).ToString();
         }
 
         return str;
@@ -98,7 +96,7 @@ public partial class NameColumn : ColumnString<TripleTriadCardEntry>
         }
         else
         {
-            ImGui.TextUnformatted(ToName(entry));
+            ImGui.Text(ToName(entry));
         }
 
         if (_textureProvider.TryGetFromGameIcon(entry.UnlockIcon, out var iconTex) && iconTex.TryGetWrap(out _, out _))

@@ -4,7 +4,6 @@ using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -192,9 +191,9 @@ public unsafe class LuaDebugTab : DebugTab
             return;
         ImGui.TableSetupScrollFreeze(0, 1);
 
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed);
-        ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Name"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn("Value"u8, ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
 
         var filterType = Enum.Parse<LuaType>(TypeFilterStrings[TypeFilter]);
@@ -216,13 +215,13 @@ public unsafe class LuaDebugTab : DebugTab
             }
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{g.Key}");
+            ImGui.Text($"{g.Key}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{g.Type}");
+            ImGui.Text($"{g.Type}");
 
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{g.Value}");
+            ImGui.Text($"{g.Value}");
         }
 
         ImGui.EndTable();

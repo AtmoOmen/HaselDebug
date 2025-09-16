@@ -1,7 +1,6 @@
 using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Utils;
-using ImGuiNET;
 using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
 
 namespace HaselDebug.Services;
@@ -16,13 +15,13 @@ public unsafe partial class DebugRenderer
         switch (value->Type)
         {
             case ValueType.Undefined:
-                ImGui.TextUnformatted("Undefined");
+                ImGui.Text("Undefined"u8);
                 break;
             case ValueType.Null:
-                ImGui.TextUnformatted("Null");
+                ImGui.Text("Null"u8);
                 break;
             case ValueType.Bool:
-                DrawCopyableText($"{value->Byte == 0x01}");
+                ImGuiUtilsEx.DrawCopyableText($"{value->Byte == 0x01}");
                 break;
             case ValueType.Int:
                 DrawNumeric((nint)(&value->Int), typeof(int), nodeOptions);
@@ -40,7 +39,7 @@ public unsafe partial class DebugRenderer
                 DrawNumeric((nint)(&value->Float), typeof(float), nodeOptions);
                 break;
             case ValueType.WideString:
-                ImGui.TextUnformatted(value->ToString());
+                ImGui.Text(value->ToString());
                 break;
             case ValueType.String:
             case ValueType.String8:
@@ -55,10 +54,10 @@ public unsafe partial class DebugRenderer
                 DrawNumeric((nint)(&value->Pointer), typeof(nint), nodeOptions);
                 break;
             case ValueType.AtkValues:
-                ImGui.TextUnformatted(value->ToString());
+                ImGui.Text(value->ToString());
                 break;
             default:
-                ImGui.TextUnformatted(value->ToString());
+                ImGui.Text(value->ToString());
                 break;
         }
     }
@@ -67,7 +66,7 @@ public unsafe partial class DebugRenderer
     {
         if (elementCount == 0)
         {
-            ImGui.TextUnformatted("No values");
+            ImGui.Text("No values"u8);
             return;
         }
 
@@ -81,8 +80,8 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("AtkValuesTable"), 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
-        ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Type"u8, ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();
@@ -103,10 +102,10 @@ public unsafe partial class DebugRenderer
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Type
-            ImGui.TextUnformatted(value->Type.ToString());
+            ImGui.Text(value->Type.ToString());
 
             ImGui.TableNextColumn(); // Value
 

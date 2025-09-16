@@ -1,7 +1,5 @@
-using Dalamud.Utility;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Quests.Columns;
@@ -23,7 +21,7 @@ public partial class CategoryColumn : ColumnString<Quest>
         if (row.JournalGenre.RowId == 0 || !row.JournalGenre.IsValid)
             return string.Empty;
 
-        return row.JournalGenre.Value.Name.ExtractText().StripSoftHyphen();
+        return row.JournalGenre.Value.Name.ToString();
     }
 
     public override void DrawColumn(Quest row)
@@ -31,7 +29,7 @@ public partial class CategoryColumn : ColumnString<Quest>
         if (row.JournalGenre.RowId != 0 && row.JournalGenre.IsValid)
         {
             _debugRenderer.DrawIcon((uint)row.JournalGenre.Value.Icon);
-            ImGui.TextUnformatted(ToName(row));
+            ImGui.Text(ToName(row));
         }
     }
 }

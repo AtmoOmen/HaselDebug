@@ -10,7 +10,6 @@ using HaselDebug.Config;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 using Microsoft.Extensions.Logging;
 
 namespace HaselDebug.Windows;
@@ -25,6 +24,7 @@ public partial class PluginWindow : SimpleWindow
     private readonly WindowManager _windowManager;
     private readonly PluginConfig _pluginConfig;
     private readonly TextService _textService;
+    private readonly AddonObserver _addonObserver;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly DebugRenderer _debugRenderer;
@@ -55,7 +55,7 @@ public partial class PluginWindow : SimpleWindow
             ShowTooltip = () =>
             {
                 using var tooltip = ImRaii.Tooltip();
-                ImGui.TextUnformatted(_textService.Translate($"TitleBarButton.ToggleConfig.Tooltip.{(_configWindow.IsOpen ? "Close" : "Open")}Config"));
+                ImGui.Text(_textService.Translate($"TitleBarButton.ToggleConfig.Tooltip.{(_configWindow.IsOpen ? "Close" : "Open")}Config"));
             },
             Click = (button) => _configWindow.Toggle()
         });
@@ -104,11 +104,11 @@ public partial class PluginWindow : SimpleWindow
         if (!child || !child.Success)
             return;
 
-        using var table = ImRaii.Table("SidebarTable", 1, ImGuiTableFlags.NoSavedSettings);
+        using var table = ImRaii.Table("SidebarTable"u8, 1, ImGuiTableFlags.NoSavedSettings);
         if (!table || !table.Success)
             return;
 
-        ImGui.TableSetupColumn("Tab Name", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Tab Name"u8, ImGuiTableColumnFlags.WidthStretch);
 
         if (_pinnedInstances.Count > 0)
         {
@@ -127,7 +127,7 @@ public partial class PluginWindow : SimpleWindow
                     {
                         Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                         Label = _textService.Translate("ContextMenu.TabPopout"),
-                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, tab))
+                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, tab))
                     });
 
                     builder.Add(new ImGuiContextMenuEntry()
@@ -175,7 +175,7 @@ public partial class PluginWindow : SimpleWindow
                 {
                     Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, tab))
+                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, tab))
                 });
             });
 
@@ -202,12 +202,12 @@ public partial class PluginWindow : SimpleWindow
                         {
                             Visible = subTab.CanPopOut && !_windowManager.Contains(win => win.WindowName == subTab.Title),
                             Label = _textService.Translate("ContextMenu.TabPopout"),
-                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_serviceProvider, subTab))
+                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, subTab))
                         });
                     });
 
                     ImGui.SameLine(0, lineHeight);
-                    ImGui.TextUnformatted(subTab.Title);
+                    ImGui.Text(subTab.Title);
 
                     var linePos = ImGui.GetWindowPos() + pos
                         - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY())

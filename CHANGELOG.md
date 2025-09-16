@@ -1,5 +1,97 @@
 # Changelog
 
+## [Unreleased]
+
+- **Added:** Unlock tabs "Chocobo Taxi Stands" and "HowTos".
+- **Added:** An "Unlock Span Length Test" tab to quickly validate most bit arrays in UIState and PlayerState.
+- **Updated:** ClientStructs now at [fefa7bfb](https://github.com/aers/FFXIVClientStructs/tree/fefa7bfb) ([compare](https://github.com/aers/FFXIVClientStructs/compare/59feea87..fefa7bfb)).
+
+## [1.33.0] (2025-09-11)
+
+- **Added:** The agent context menu in the Agents tab now has a "Show Agent"/"Hide Agent" option when the agent is activatable. Use at your own risk!
+- **Added:** Visible agents in the Agents tab are now listed in green.
+- **Added:** The Main Commands tab now displays stats recorded by the McAggreModule.
+- **Fixed:** Agents with an Unk entry in the AgentId enum are now once again using the addon name as fallback when it's open.
+- **Updated:** ClientStructs now at [59feea87](https://github.com/aers/FFXIVClientStructs/tree/59feea87) ([compare](https://github.com/aers/FFXIVClientStructs/compare/dd9edd91..59feea87)).
+
+## [1.32.2] (2025-09-04)
+
+- **Updated:** ClientStructs now at [dd9edd91](https://github.com/aers/FFXIVClientStructs/tree/dd9edd91) ([compare](https://github.com/aers/FFXIVClientStructs/compare/834d3cc9..dd9edd91)).
+
+## [1.32.1] (2025-09-02)
+
+- **Updated:** ClientStructs now at [834d3cc9](https://github.com/aers/FFXIVClientStructs/tree/834d3cc9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/24edbea0..834d3cc9)).
+
+## [1.32.0] (2025-09-01)
+
+- **Added:** A Permissions tab to check which Permissions match the current Conditions.
+- **Updated:** ClientStructs now at [24edbea0](https://github.com/aers/FFXIVClientStructs/tree/24edbea0) ([compare](https://github.com/aers/FFXIVClientStructs/compare/0e5c2ea3..24edbea0)).
+
+## [1.31.0] (2025-08-26)
+
+- **Added:** Keybinds are now displayed in the Input tab.
+- **Added:** The Addon Config tab now has a sub-tab that lists all HudLayout configurable addons.
+- **Updated:** The GlobalParameters list in the RaptureTextModule tab was updated.
+- **Updated:** ClientStructs now at [0e5c2ea3](https://github.com/aers/FFXIVClientStructs/tree/0e5c2ea3) ([compare](https://github.com/aers/FFXIVClientStructs/compare/2d10f753..0e5c2ea3)).
+
+## [1.30.5] (2025-08-15)
+
+- **Fixed:** There was a substantial FPS loss when displaying structs with a lot of field due to inheritance checks for type redirects. The result of inheritance checks is now cached.
+- **Fixed:** Hovering over an uninitialized `Character.CompanionObject` to highlight the position would crash the game because VirtualTable was a nullptr.
+- **Updated:** ClientStructs now at [2d10f753](https://github.com/aers/FFXIVClientStructs/tree/2d10f753) ([compare](https://github.com/aers/FFXIVClientStructs/compare/48d43753..2d10f753)).
+
+## [1.30.4] (2025-08-13)
+
+- **Fixed:** The signatures for generating addon name hashes in the Addon Config tab were outdated.
+- **Updated:** ClientStructs now at [48d43753](https://github.com/aers/FFXIVClientStructs/tree/48d43753) ([compare](https://github.com/aers/FFXIVClientStructs/compare/08480efc..48d43753)).
+
+## [1.30.3] (2025-08-11)
+
+- **Added:** More event handler type redirects: FateDirector and BattleLeveDirector. CompanyLeveDirector, CompanyLeveOfficer and GatheringLeveDirector use LeveDirector for now.
+- **Updated:** The Drag Drop Type tab was reworked into separate lists.
+- **Updated:** The flag enum input was changed so that it shows the bit and fills in unknown values.
+- **Updated:** ClientStructs now at [08480efc](https://github.com/aers/FFXIVClientStructs/tree/08480efc) ([compare](https://github.com/aers/FFXIVClientStructs/compare/a1b91b0b..08480efc)).
+
+## [1.30.2] (2025-08-09)
+
+- **Added:** In the RaptureTextModule Definitions tab, the vfunc index is now displayed.
+- **Fixed:** In the RaptureTextModule Definitions tab, the parameters displayed garbage after the TotalParamCount was reached.
+- **Fixed:** Drawing AtkTextures no longer replaces the struct view, instead the texture is displayed inside the struct at the end.
+- **Updated:** ClientStructs now at [a1b91b0b](https://github.com/aers/FFXIVClientStructs/tree/a1b91b0b) ([compare](https://github.com/aers/FFXIVClientStructs/compare/3d153390..a1b91b0b)).
+
+## [1.30.1] (2025-08-07)
+
+- **Fixed:** The Outfits table was empty.
+
+## [1.30.0] (2025-08-07)
+
+Update for 7.3.
+
+- **Added:** `InventoryItem.CrafterContentId` now shows a name, if available.
+- **Added:** The wedding date on InventoryItems is now displayed.
+- **Added:** Addon Factories tab was added.
+- **Updated:** Tabs now load data when they are opened for the first time, not when the plugin starts.
+- **Updated:** The address of ConfigOptions can be copied by holding shift.
+- **Temporarily:** Drag Drop Type tab is disabled due to new ImGui bindings not handling that many columns. Needs a rewrite.
+- **Updated:** ClientStructs now at [3d153390](https://github.com/aers/FFXIVClientStructs/tree/3d153390) ([compare](https://github.com/aers/FFXIVClientStructs/compare/62ea2008..3d153390)).
+
+## [1.29.1] (2025-07-15)
+
+- **Fixed:** The border around highlighted nodes didn't respect the user-set scaling of the addon.
+- **Fixed:** The border around highlighted component nodes wasn't shown when `AtkResNode` was null. It now falls back to `OwnerNode`.
+- **Updated:** It's now possible to copy values from the Addon Config table.
+- **Updated:** ClientStructs now at [62ea2008](https://github.com/aers/FFXIVClientStructs/tree/62ea2008) ([compare](https://github.com/aers/FFXIVClientStructs/compare/8b3a8f45..62ea2008)).
+
+## [1.29.0] (2025-07-12)
+
+- **Added:** An Item Action Type tab to list all ItemActions grouped by Type and their items.
+- **Updated:** The Addon Inspector's Node Picker now opens the TreeNodes up to the node that was clicked on and only resets the selection index when hovered nodes change, not when the cursor moved by a single pixel.
+- **Updated:** ClientStructs updated to the branch used in my [Update InventoryItem PR](https://github.com/aers/FFXIVClientStructs/pull/1480), based on [8b3a8f45](https://github.com/aers/FFXIVClientStructs/tree/8b3a8f45) ([compare](https://github.com/aers/FFXIVClientStructs/compare/8a6e0bb6..2ee1714c)).
+
+## [1.28.1] (2025-06-24)
+
+- **Updated:** ClientStructs now at [8a6e0bb6](https://github.com/aers/FFXIVClientStructs/tree/8a6e0bb6) ([compare](https://github.com/aers/FFXIVClientStructs/compare/a93b68f5..8a6e0bb6)).
+
 ## [1.28.0] (2025-06-20)
 
 - **Added:** StdLinkedLists are now supported.
@@ -434,18 +526,32 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.28.0...main
-[1.28.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.27.0...1.28.0
-[1.27.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.26.0...1.27.0
-[1.26.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.25.0...1.26.0
-[1.25.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.2...1.25.0
-[1.24.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.1...1.24.2
-[1.24.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.0...1.24.1
-[1.24.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.1...1.24.0
-[1.23.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.0...1.23.1
-[1.23.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.22.0...1.23.0
-[1.22.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.21.0...1.22.0
-[1.21.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.20.1...1.21.0
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.33.0...main
+[1.33.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.2...v1.33.0
+[1.32.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.1...v1.32.2
+[1.32.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.0...v1.32.1
+[1.32.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.31.0...v1.32.0
+[1.31.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.5...v1.31.0
+[1.30.5]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.4...v1.30.5
+[1.30.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.3...v1.30.4
+[1.30.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.2...v1.30.3
+[1.30.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.1...v1.30.2
+[1.30.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.30.0...v1.30.1
+[1.30.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.29.1...v1.30.0
+[1.29.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.29.0...v1.29.1
+[1.29.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.28.1...v1.29.0
+[1.28.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.28.0...v1.28.1
+[1.28.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.27.0...v1.28.0
+[1.27.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.26.0...v1.27.0
+[1.26.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.25.0...v1.26.0
+[1.25.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.2...v1.25.0
+[1.24.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.1...v1.24.2
+[1.24.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.24.0...v1.24.1
+[1.24.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.1...v1.24.0
+[1.23.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.23.0...v1.23.1
+[1.23.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.22.0...v1.23.0
+[1.22.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.21.0...v1.22.0
+[1.21.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.20.1...v1.21.0
 [1.20.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.18.2...v1.19.0

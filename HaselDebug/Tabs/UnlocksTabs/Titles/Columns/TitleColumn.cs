@@ -1,6 +1,4 @@
 using Dalamud.Game;
-using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.String;
@@ -8,14 +6,17 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselCommon.Gui.ImGuiTable;
 using HaselCommon.Services;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
+using Microsoft.Extensions.Logging;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Titles.Columns;
 
-[RegisterTransient]
-public class TitleColumn : ColumnString<Title>
+[RegisterTransient, AutoConstruct]
+public partial class TitleColumn : ColumnString<Title>
 {
+    private readonly ILogger<TitleColumn> _logger;
+    private readonly ExcelService _excelService;
+
     private bool _isFeminine;
 
     public void SetSex(bool isFeminine)
@@ -28,10 +29,10 @@ public class TitleColumn : ColumnString<Title>
     {
         if (UIModule.Instance()->GetUIInputData()->IsKeyDown(SeVirtualKey.SHIFT))
         {
-            Service.Get<ExcelService>().TryGetRow(row.RowId, ClientLanguage.English, out row);
+            _excelService.TryGetRow(row.RowId, ClientLanguage.English, out row);
         }
 
-        return (_isFeminine ? row.Feminine : row.Masculine).ExtractText().StripSoftHyphen();
+        return (_isFeminine ? row.Feminine : row.Masculine).ToString();
     }
 
     public override unsafe void DrawColumn(Title row)
@@ -40,7 +41,7 @@ public class TitleColumn : ColumnString<Title>
         var isUnlocked = uiState->TitleList.IsTitleUnlocked((ushort)row.RowId);
         var localPlayer = Control.GetLocalPlayer();
 
-        if (localPlayer != null && uiState->PlayerState.IsLoaded == 1 && uiState->PlayerState.Sex == (_isFeminine ? 1 : 0) && isUnlocked)
+        if (localPlayer != null && uiState->PlayerState.IsLoaded && uiState->PlayerState.Sex == (_isFeminine ? 1 : 0) && isUnlocked)
         {
             var clicked = ImGui.Selectable($"{ToName(row)}##Selectable", localPlayer->TitleId == row.RowId);
 
@@ -50,7 +51,7 @@ public class TitleColumn : ColumnString<Title>
             if (clicked)
             {
                 var titleIdToSend = (ushort)(localPlayer->TitleId == row.RowId ? 0 : row.RowId);
-                Service.Get<IPluginLog>().Debug($"Sending Title Update {titleIdToSend}");
+                _logger.LogDebug($"Sending Title Update {titleIdToSend}");
                 uiState->TitleController.SendTitleIdUpdate(titleIdToSend);
                 if (titleIdToSend != 0)
                 {
@@ -61,7 +62,7 @@ public class TitleColumn : ColumnString<Title>
         }
         else
         {
-            ImGui.TextUnformatted(ToName(row));
+            ImGui.Text(ToName(row));
         }
     }
 }

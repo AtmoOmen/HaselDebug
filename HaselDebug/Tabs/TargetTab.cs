@@ -4,7 +4,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs;
 
@@ -18,7 +17,7 @@ public unsafe partial class TargetTab : DebugTab
         var target = TargetSystem.Instance()->GetTargetObject();
         if (target == null)
         {
-            ImGui.TextUnformatted("No Target");
+            ImGui.Text("No Target"u8);
             return;
         }
 

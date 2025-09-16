@@ -9,6 +9,7 @@ namespace HaselDebug.Tabs.UnlocksTabs.Cutscenes;
 [RegisterSingleton, AutoConstruct]
 public unsafe partial class CutscenesTable : Table<CutsceneEntry>
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
     private readonly WorkIndexColumn _workIndexColumn;
     private readonly SeenColumn _seenColumn;
@@ -21,14 +22,17 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
     public void Initialize()
     {
         Columns = [
-            EntryRowIdColumn<CutsceneEntry, Cutscene>.Create(),
+            EntryRowIdColumn<CutsceneEntry, Cutscene>.Create(_serviceProvider),
             _workIndexColumn,
             _seenColumn,
             _pathColumn,
             _usesColumn,
         ];
+    }
 
-        LineHeight = 0;
+    public override float CalculateLineHeight()
+    {
+        return 0;
     }
 
     public override void LoadRows()
@@ -57,7 +61,7 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
             {
                 if (cutscene.RowId == 0) continue;
                 if (_cutscenes.TryGetValue(cutscene.RowId, out var cEntry))
-                    cEntry.Uses.Add((typeof(CompleteJournal), row.RowId, row.Name.ExtractText()));
+                    cEntry.Uses.Add((typeof(CompleteJournal), row.RowId, row.Name.ToString()));
             }
         }
 
@@ -70,7 +74,7 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
                 continue;
 
             if (_cutscenes.TryGetValue(row.Cutscene.RowId, out var cEntry))
-                cEntry.Uses.Add((typeof(Lumina.Excel.Sheets.InstanceContent), row.RowId, cfc.Name.ExtractText()));
+                cEntry.Uses.Add((typeof(Lumina.Excel.Sheets.InstanceContent), row.RowId, cfc.Name.ToString()));
         }
 
         foreach (var row in _excelService.GetSheet<PartyContentCutscene>())
@@ -82,7 +86,7 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
                 continue;
 
             if (_cutscenes.TryGetValue(row.Cutscene.RowId, out var cEntry))
-                cEntry.Uses.Add((typeof(PartyContentCutscene), row.RowId, cfc.Name.ExtractText()));
+                cEntry.Uses.Add((typeof(PartyContentCutscene), row.RowId, cfc.Name.ToString()));
         }
 
         foreach (var row in _excelService.GetSheet<PublicContentCutscene>())
@@ -94,7 +98,7 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
                 continue;
 
             if (_cutscenes.TryGetValue(row.Cutscene.RowId, out var cEntry))
-                cEntry.Uses.Add((typeof(PublicContentCutscene), row.RowId, cfc.Name.ExtractText()));
+                cEntry.Uses.Add((typeof(PublicContentCutscene), row.RowId, cfc.Name.ToString()));
         }
 
         foreach (var row in _excelService.GetSheet<Warp>())
@@ -102,13 +106,13 @@ public unsafe partial class CutscenesTable : Table<CutsceneEntry>
             if (row.StartCutscene.RowId != 0)
             {
                 if (_cutscenes.TryGetValue(row.StartCutscene.RowId, out var cEntry))
-                    cEntry.Uses.Add((typeof(Warp), row.RowId, !row.Name.IsEmpty ? row.Name.ExtractText() : row.Question.ExtractText()));
+                    cEntry.Uses.Add((typeof(Warp), row.RowId, !row.Name.IsEmpty ? row.Name.ToString() : row.Question.ToString()));
             }
 
             if (row.EndCutscene.RowId != 0)
             {
                 if (_cutscenes.TryGetValue(row.EndCutscene.RowId, out var cEntry))
-                    cEntry.Uses.Add((typeof(Warp), row.RowId, !row.Name.IsEmpty ? row.Name.ExtractText() : row.Question.ExtractText()));
+                    cEntry.Uses.Add((typeof(Warp), row.RowId, !row.Name.IsEmpty ? row.Name.ToString() : row.Question.ToString()));
             }
         }
 

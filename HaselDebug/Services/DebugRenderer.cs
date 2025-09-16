@@ -14,9 +14,10 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Memory;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.Attributes;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
+using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
@@ -28,15 +29,15 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.STD;
-using HaselCommon.Extensions;
 using HaselCommon.Graphics;
 using HaselCommon.Services;
+using HaselCommon.Utils;
 using HaselDebug.Utils;
-using ImGuiNET;
 using InteropGenerator.Runtime;
 using InteropGenerator.Runtime.Attributes;
 using Lumina.Text.ReadOnly;
 using Microsoft.Extensions.Logging;
+using static Dalamud.Utility.StringExtensions;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUldManager;
 using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
 using KernelTexture = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Texture;
@@ -66,12 +67,15 @@ public unsafe partial class DebugRenderer
     private readonly WindowManager _windowManager;
     private readonly ITextureProvider _textureProvider;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
-    private readonly SeStringEvaluator _seStringEvaluator;
+    private readonly ISeStringEvaluator _seStringEvaluator;
     private readonly TextService _textService;
-    private readonly TextureService _textureService;
+    private readonly GfdService _gfdService;
+    private readonly UldService _uldService;
     private readonly IDataManager _dataManager;
+    private readonly ISigScanner _sigScanner;
     private readonly IGameGui _gameGui;
     private readonly LanguageProvider _languageProvider;
+    private readonly AddonObserver _addonObserver;
 
     public ImmutableSortedDictionary<string, Type> AddonTypes { get; private set; }
     public ImmutableSortedDictionary<AgentId, Type> AgentTypes { get; private set; }
@@ -103,13 +107,13 @@ public unsafe partial class DebugRenderer
     {
         if (type == null)
         {
-            ImGui.TextUnformatted("");
+            ImGui.Text("");
             return;
         }
 
         if (address == 0 || address < 0x140000000)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -121,13 +125,13 @@ public unsafe partial class DebugRenderer
 
         if (type == null)
         {
-            ImGui.TextUnformatted("");
+            ImGui.Text("");
             return;
         }
 
         if (address == 0 || address < 0x140000000)
         {
-            ImGui.TextUnformatted("null");
+            ImGui.Text("null"u8);
             return;
         }
 
@@ -139,7 +143,7 @@ public unsafe partial class DebugRenderer
 
         if (type.IsVoid())
         {
-            ImGui.TextUnformatted($"0x{address:X}"); // TODO: what did I do here?
+            ImGui.Text($"0x{address:X}"); // TODO: what did I do here?
             return;
         }
 
@@ -183,8 +187,8 @@ public unsafe partial class DebugRenderer
                     case ObjectKind.HousingEventObject:
                         type = typeof(FFXIVClientStructs.FFXIV.Client.Game.Object.HousingObject);
                         break;
-                    case ObjectKind.MjiObject:
-                        type = typeof(FFXIVClientStructs.FFXIV.Client.Game.Object.MJIObject);
+                    case ObjectKind.ReactionEventObject:
+                        type = typeof(FFXIVClientStructs.FFXIV.Client.Game.Object.ReactionEventObject);
                         break;
                     case ObjectKind.Ornament:
                         type = typeof(FFXIVClientStructs.FFXIV.Client.Game.Character.Ornament);
@@ -233,7 +237,7 @@ public unsafe partial class DebugRenderer
 
                     case EventHandlerContent.Shop:
                         type = typeof(ShopEventHandler);
-                        additionalName = new ReadOnlySeStringSpan(((ShopEventHandler*)address)->ShopName.AsSpan()).ExtractText();
+                        additionalName = new ReadOnlySeStringSpan(((ShopEventHandler*)address)->ShopName.AsSpan()).ToString();
                         break;
 
                     case EventHandlerContent.Aetheryte:
@@ -246,7 +250,23 @@ public unsafe partial class DebugRenderer
 
                     case EventHandlerContent.CustomTalk:
                         type = typeof(CustomTalkEventHandler);
-                        additionalName = new ReadOnlySeStringSpan(((LuaEventHandler*)address)->LuaClass.AsSpan()).ExtractText();
+                        additionalName = new ReadOnlySeStringSpan(((LuaEventHandler*)address)->LuaClass.AsSpan()).ToString();
+                        break;
+
+                    case EventHandlerContent.FateDirector:
+                        type = typeof(FateDirector);
+                        break;
+
+                    case EventHandlerContent.BattleLeveDirector:
+                        type = typeof(BattleLeveDirector);
+                        additionalName = new ReadOnlySeStringSpan(((LuaEventHandler*)address)->LuaClass.AsSpan()).ToString();
+                        break;
+
+                    case EventHandlerContent.CompanyLeveDirector:
+                    case EventHandlerContent.CompanyLeveOfficer:
+                    case EventHandlerContent.GatheringLeveDirector:
+                        type = typeof(LeveDirector);
+                        additionalName = new ReadOnlySeStringSpan(((LuaEventHandler*)address)->LuaClass.AsSpan()).ToString();
                         break;
 
                     case EventHandlerContent.InstanceContentDirector:
@@ -402,6 +422,24 @@ public unsafe partial class DebugRenderer
                     }
                 }
             }
+            else if (type == typeof(AtkUnitBase))
+            {
+                nodeOptions = nodeOptions.WithTitle($"{type.FullName} ({((AtkUnitBase*)address)->NameString})");
+            }
+            else if (type == typeof(AgentInterface))
+            {
+                var agent = (AgentInterface*)address;
+                var agentModule = AgentModule.Instance();
+                for (var i = 0; i < agentModule->Agents.Length; i++)
+                {
+                    var ptr = agentModule->Agents.GetPointer(i);
+                    if (ptr->Value != null && ptr->Value == agent)
+                    {
+                        nodeOptions = nodeOptions.WithTitle($"{type.FullName} ({(AgentId)i})");
+                        break;
+                    }
+                }
+            }
 
             nodeOptions = nodeOptions with
             {
@@ -418,12 +456,12 @@ public unsafe partial class DebugRenderer
         }
         else if (type == typeof(bool))
         {
-            ImGui.TextUnformatted($"{*(bool*)address}");
+            ImGui.Text($"{*(bool*)address}");
             return;
         }
         else if (type == typeof(BitVector32))
         {
-            ImGui.TextUnformatted($"{*(BitVector32*)address}");
+            ImGui.Text($"{*(BitVector32*)address}");
             return;
         }
         else if (type == typeof(Utf8String))
@@ -434,11 +472,6 @@ public unsafe partial class DebugRenderer
         else if (type == typeof(KernelTexture))
         {
             DrawTexture(address, nodeOptions);
-            return;
-        }
-        else if (type == typeof(AtkTexture))
-        {
-            DrawAtkTexture(address, nodeOptions);
             return;
         }
         else if (type == typeof(AtkValue))
@@ -453,7 +486,7 @@ public unsafe partial class DebugRenderer
         }
         else if (type == typeof(StdString))
         {
-            DrawCopyableText(((StdString*)address)->ToString());
+            ImGuiUtilsEx.DrawCopyableText(((StdString*)address)->ToString());
             return;
         }
         else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(StdVector<>))
@@ -502,7 +535,7 @@ public unsafe partial class DebugRenderer
             return;
         }
 
-        ImGui.TextUnformatted("Unsupported Type");
+        ImGui.Text("Unsupported Type"u8);
     }
 
     public ImRaii.IEndObject DrawTreeNode(NodeOptions nodeOptions)
@@ -552,8 +585,12 @@ public unsafe partial class DebugRenderer
                 else if (Inherits<GameObject>(highlightType))
                 {
                     var gameObject = (GameObject*)highlightAddress;
-                    if (gameObject != null)
-                        DrawLine(gameObject->Position);
+                    if (gameObject != null && gameObject->VirtualTable != null) // safety-check for valid pointer to pre-allocated memory on Character.CompanionObject
+                    {
+                        var pos = gameObject->GetPosition();
+                        if (pos != null)
+                            DrawLine((Vector3)(*pos));
+                    }
                 }
                 else if (Inherits<AtkUnitBase>(highlightType))
                 {
@@ -572,6 +609,8 @@ public unsafe partial class DebugRenderer
                     var component = (AtkComponentBase*)highlightAddress;
                     if (component != null && component->AtkResNode != null)
                         HighlightNode(component->AtkResNode);
+                    else if (component != null && component->OwnerNode != null)
+                        HighlightNode((AtkResNode*)component->OwnerNode);
                 }
 
                 void DrawLine(Vector3 pos)
@@ -631,7 +670,7 @@ public unsafe partial class DebugRenderer
         foreach (var (fieldInfo, offset, size) in processedFields)
         {
             i++;
-            DrawCopyableText($"[0x{offset:X}]", ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"0x{offset:X}" : $"{address + offset:X}", textColor: Color.Grey3);
+            ImGuiUtilsEx.DrawCopyableText($"[0x{offset:X}]", ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"0x{offset:X}" : $"{address + offset:X}", textColor: Color.Grey3);
             ImGui.SameLine();
 
             var fieldNodeOptions = nodeOptions.WithAddress(i);
@@ -648,7 +687,7 @@ public unsafe partial class DebugRenderer
             if (fieldInfo.GetCustomAttribute<ObsoleteAttribute>() is ObsoleteAttribute obsoleteAttribute)
             {
                 using (ImRaii.PushColor(ImGuiCol.Text, (obsoleteAttribute.IsError ? ColorObsoleteError : ColorObsolete).ToUInt()))
-                    ImGui.TextUnformatted("[Obsolete]");
+                    ImGui.Text("[Obsolete]"u8);
 
                 if (!string.IsNullOrEmpty(obsoleteAttribute.Message) && ImGui.IsItemHovered())
                     ImGui.SetTooltip(obsoleteAttribute.Message);
@@ -658,11 +697,11 @@ public unsafe partial class DebugRenderer
 
             if (fieldInfo.IsStatic)
             {
-                ImGui.TextUnformatted("static");
+                ImGui.Text("static"u8);
                 ImGui.SameLine();
             }
 
-            DrawCopyableText(fieldType.ReadableTypeName(), fieldType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
+            ImGuiUtilsEx.DrawCopyableText(fieldType.ReadableTypeName(), fieldType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
             ImGui.SameLine();
 
             // delegate*
@@ -845,7 +884,17 @@ public unsafe partial class DebugRenderer
                 ImGui.SameLine();
                 var chars = MemoryHelper.ReadString(fieldAddress, 4).ToCharArray();
                 Array.Reverse(chars);
-                DrawCopyableText(new string(chars));
+                ImGuiUtilsEx.DrawCopyableText(new string(chars));
+                continue;
+            }
+
+            // InventoryItem.CrafterContentId
+            if (Inherits<InventoryItem>(type) && fieldType == typeof(ulong) && fieldInfo.Name == "CrafterContentId")
+            {
+                DrawFieldName(fieldInfo);
+                DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
+                ImGui.SameLine();
+                ImGuiUtilsEx.DrawCopyableText(NameCache.Instance()->GetNameByContentId(*(ulong*)fieldAddress).ToString());
                 continue;
             }
 
@@ -912,6 +961,11 @@ public unsafe partial class DebugRenderer
 
             DrawFieldName(fieldInfo);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions);
+
+            if (fieldType == typeof(AtkTexture))
+            {
+                DrawAtkTexture(fieldAddress, fieldNodeOptions);
+            }
         }
     }
 
@@ -924,7 +978,7 @@ public unsafe partial class DebugRenderer
         {
             var startPos = ImGui.GetWindowPos() + ImGui.GetCursorPos() - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY());
 
-            ImGui.TextUnformatted(fieldNameOverride ?? fieldInfo.Name);
+            ImGui.Text(fieldNameOverride ?? fieldInfo.Name);
 
             if (hasDoc)
             {
@@ -936,7 +990,7 @@ public unsafe partial class DebugRenderer
         if (ImGui.IsItemHovered())
         {
             using var tooltip = ImRaii.Tooltip();
-            ImGui.TextUnformatted(fieldNameOverride ?? fieldInfo.Name);
+            ImGui.Text(fieldNameOverride ?? fieldInfo.Name);
 
             if (hasDoc)
             {
@@ -947,21 +1001,21 @@ public unsafe partial class DebugRenderer
                     ImGui.Separator();
 
                     if (!string.IsNullOrEmpty(doc.Sumamry))
-                        ImGui.TextUnformatted(doc.Sumamry);
+                        ImGui.Text(doc.Sumamry);
 
                     if (!string.IsNullOrEmpty(doc.Remarks))
-                        ImGui.TextUnformatted(doc.Remarks);
+                        ImGui.Text(doc.Remarks);
 
                     if (doc.Parameters.Length > 0)
                     {
                         foreach (var param in doc.Parameters)
                         {
-                            ImGui.TextUnformatted($"{param.Key}: {param.Value}");
+                            ImGui.Text($"{param.Key}: {param.Value}");
                         }
                     }
 
                     if (!string.IsNullOrEmpty(doc.Returns))
-                        ImGui.TextUnformatted(doc.Returns);
+                        ImGui.Text(doc.Returns);
                 }
             }
         }
@@ -986,7 +1040,7 @@ public unsafe partial class DebugRenderer
         if (type.GetCustomAttribute<FlagsAttribute>() != null)
         {
             ImGui.SameLine();
-            ImGui.TextUnformatted(" - ");
+            ImGui.Text(" - "u8);
             var bits = Marshal.SizeOf(underlyingType) * 8;
             for (var i = 0u; i < bits; i++)
             {
@@ -994,62 +1048,15 @@ public unsafe partial class DebugRenderer
                 if ((Convert.ToUInt64(value) & bitValue) != 0)
                 {
                     ImGui.SameLine();
-                    DrawCopyableText(Enum.GetName(type, bitValue)?.ToString() ?? $"{bitValue}", $"{bitValue}");
+                    ImGuiUtilsEx.DrawCopyableText(Enum.GetName(type, bitValue)?.ToString() ?? $"{bitValue}", $"{bitValue}");
                 }
             }
         }
         else
         {
             ImGui.SameLine();
-            ImGui.TextUnformatted(Enum.GetName(type, value)?.ToString() ?? "");
+            ImGui.Text(Enum.GetName(type, value)?.ToString() ?? "");
         }
-    }
-
-    public void DrawCopyableText(string text, string? textCopy = null, string? tooltipText = null, bool asSelectable = false, Color? textColor = null, string? highligtedText = null, bool noTooltip = false)
-    {
-        textCopy ??= text;
-
-        using var color = textColor?.Push(ImGuiCol.Text);
-
-        if (asSelectable)
-        {
-            ImGui.Selectable(text);
-        }
-        else if (!string.IsNullOrEmpty(highligtedText))
-        {
-            var pos = text.IndexOf(highligtedText, StringComparison.InvariantCultureIgnoreCase);
-            if (pos != -1)
-            {
-                ImGui.TextUnformatted(text[..pos]);
-                ImGui.SameLine(0, 0);
-
-                using (Color.Yellow.Push(ImGuiCol.Text))
-                    ImGui.TextUnformatted(text[pos..(pos + highligtedText.Length)]);
-
-                ImGui.SameLine(0, 0);
-                ImGui.TextUnformatted(text[(pos + highligtedText.Length)..]);
-            }
-            else
-            {
-                ImGui.TextUnformatted(text);
-            }
-        }
-        else
-        {
-            ImGui.TextUnformatted(text);
-        }
-
-        color?.Pop();
-
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-            if (!noTooltip)
-                ImGui.SetTooltip(tooltipText ?? textCopy);
-        }
-
-        if (ImGui.IsItemClicked())
-            ImGui.SetClipboardText(textCopy);
     }
 
     public void DrawAddress(void* obj)
@@ -1059,20 +1066,18 @@ public unsafe partial class DebugRenderer
     {
         if (address == 0)
         {
-            ImGui.TextUnformatted("");
+            ImGui.Text("");
             return;
         }
 
-        var sigScanner = Service.Get<ISigScanner>();
-
-        if (address > sigScanner.Module.BaseAddress && !ImGui.IsKeyDown(ImGuiKey.LeftShift))
+        if (address > _sigScanner.Module.BaseAddress && !ImGui.IsKeyDown(ImGuiKey.LeftShift))
         {
-            DrawCopyableText($"+0x{address - sigScanner.Module.BaseAddress:X}");
+            ImGuiUtilsEx.DrawCopyableText($"+0x{address - _sigScanner.Module.BaseAddress:X}");
             return;
         }
         else
         {
-            DrawCopyableText($"0x{address:X}");
+            ImGuiUtilsEx.DrawCopyableText($"0x{address:X}");
         }
     }
 
@@ -1135,7 +1140,7 @@ public unsafe partial class DebugRenderer
                 break;
 
             default:
-                ImGui.TextUnformatted("null");
+                ImGui.Text("null"u8);
                 return value;
         }
 
@@ -1154,7 +1159,7 @@ public unsafe partial class DebugRenderer
 
         if (type == typeof(Half) || type == typeof(decimal) || type == typeof(double) || type == typeof(float))
         {
-            DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
             return;
         }
 
@@ -1167,7 +1172,7 @@ public unsafe partial class DebugRenderer
             return;
         }
 
-        ImGui.TextUnformatted($"Unhandled NumericType {type.FullName}");
+        ImGui.Text($"Unhandled NumericType {type.FullName}");
     }
 
     private void DrawNumericWithHex(object value, Type type, NodeOptions nodeOptions)
@@ -1179,18 +1184,18 @@ public unsafe partial class DebugRenderer
 
         if (nodeOptions.IsTimestampField)
         {
-            DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
 
             switch (value)
             {
                 case int intTime when intTime != 0:
                     ImGui.SameLine();
-                    DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(intTime).ToLocalTime().ToString());
+                    ImGuiUtilsEx.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(intTime).ToLocalTime().ToString());
                     break;
 
                 case long longTime when longTime != 0:
                     ImGui.SameLine();
-                    DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(longTime).ToLocalTime().ToString());
+                    ImGuiUtilsEx.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(longTime).ToLocalTime().ToString());
                     break;
             }
 
@@ -1200,19 +1205,19 @@ public unsafe partial class DebugRenderer
         {
             if (ImGui.IsKeyDown(ImGuiKey.LeftShift) || ImGui.IsKeyDown(ImGuiKey.RightShift))
             {
-                DrawCopyableText(ToHexString(value, type));
+                ImGuiUtilsEx.DrawCopyableText(ToHexString(value, type));
             }
             else
             {
-                DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+                ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
             }
 
             return;
         }
 
-        DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+        ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
         ImGui.SameLine();
-        DrawCopyableText(ToHexString(value, type));
+        ImGuiUtilsEx.DrawCopyableText(ToHexString(value, type));
     }
 
     private static string ToHexString(object value, Type type)
@@ -1296,7 +1301,7 @@ public unsafe partial class DebugRenderer
 
         if (_textureProvider.TryGetFromGameIcon(new GameIconLookup(iconId, isHq), out var tex) && tex.TryGetWrap(out var texture, out _))
         {
-            ImGui.Image(texture.ImGuiHandle, drawInfo.DrawSize.Value);
+            ImGui.Image(texture.Handle, drawInfo.DrawSize.Value);
 
             if (ImGui.IsItemHovered())
             {
@@ -1307,9 +1312,9 @@ public unsafe partial class DebugRenderer
                 {
                     ImGui.BeginTooltip();
                     if (canCopy)
-                        ImGui.TextUnformatted("Click to copy IconId");
-                    ImGui.TextUnformatted($"ID: {iconId} – Size: {texture.Width}x{texture.Height}");
-                    ImGui.Image(texture.ImGuiHandle, new(texture.Width, texture.Height));
+                        ImGui.Text("Click to copy IconId"u8);
+                    ImGui.Text($"ID: {iconId} – Size: {texture.Width}x{texture.Height}");
+                    ImGui.Image(texture.Handle, new(texture.Width, texture.Height));
                     ImGui.EndTooltip();
                 }
             }
@@ -1330,7 +1335,7 @@ public unsafe partial class DebugRenderer
     {
         if (span.Length == 0)
         {
-            ImGui.TextUnformatted("No values");
+            ImGui.Text("No values"u8);
             return;
         }
 
@@ -1344,7 +1349,7 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("Array"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Index", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 40);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(2, 1);
         ImGui.TableHeadersRow();
@@ -1355,7 +1360,7 @@ public unsafe partial class DebugRenderer
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn(); // Index
-            ImGui.TextUnformatted(i.ToString());
+            ImGui.Text(i.ToString());
 
             ImGui.TableNextColumn(); // Value
             var ptr = span.GetPointer(i);

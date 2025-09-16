@@ -3,7 +3,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using ImGuiNET;
 
 namespace HaselDebug.Tabs.UnlocksTabs.AetherCurrents;
 
@@ -29,7 +28,7 @@ public unsafe class AetherCurrentsTab(AetherCurrentsTable table) : DebugTab, IUn
     {
         if (!AgentLobby.Instance()->IsLoggedIn)
         {
-            ImGui.TextUnformatted("Not logged in.");
+            ImGui.Text("Not logged in."u8);
             return;
         }
 

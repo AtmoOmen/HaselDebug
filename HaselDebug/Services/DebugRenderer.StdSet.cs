@@ -4,7 +4,6 @@ using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using ImGuiNET;
 
 namespace HaselDebug.Services;
 
@@ -15,7 +14,7 @@ public unsafe partial class DebugRenderer
         var elementCount = *(ulong*)(address + 0x8);
         if (elementCount == 0)
         {
-            ImGui.TextUnformatted("No values");
+            ImGui.Text("No values"u8);
             return;
         }
 
@@ -31,7 +30,7 @@ public unsafe partial class DebugRenderer
                 {
                     Visible = !_windowManager.Contains(win => win.WindowName == "0x" + address.ToString("X")),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_serviceProvider, address, typeof(StdSet<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
+                    ClickCallback = () => _windowManager.Open(new PointerTypeWindow(_windowManager, _textService, _addonObserver, _serviceProvider, address, typeof(StdSet<>).MakeGenericType(valueType), "0x" + address.ToString("X")))
                 });
             }
         });
@@ -82,7 +81,7 @@ public unsafe partial class DebugRenderer
         using var table = ImRaii.Table(nodeOptions.GetKey("StdMapTable"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable | ImGuiTableFlags.NoSavedSettings);
         if (!table) return;
 
-        ImGui.TableSetupColumn("Address", ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Address"u8, ImGuiTableColumnFlags.WidthFixed, 120);
         ImGui.TableSetupColumn("Value");
         ImGui.TableSetupScrollFreeze(3, 1);
         ImGui.TableHeadersRow();

@@ -2,7 +2,6 @@ using Dalamud.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselCommon.Graphics;
 using HaselCommon.Services;
-using ImGuiNET;
 using Lumina.Text.ReadOnly;
 
 namespace HaselDebug.Utils;
@@ -23,7 +22,7 @@ public record struct NodeOptions
     public bool RenderSeString { get; set; } = true;
     public AddressPath ResolvedInheritedTypeAddresses { get; set; } = new();
     public bool UseSimpleEventHandlerName { get; set; } = false;
-    public ClientLanguage Language { get; set; } = Service.Get<LanguageProvider>().ClientLanguage;
+    public ClientLanguage? Language { get; set; } = null;
     public bool IsIconIdField { get; set; } = false;
     public bool IsTimestampField { get; set; } = false;
     public bool HexOnShift { get; set; } = false;

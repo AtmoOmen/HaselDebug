@@ -1,5 +1,4 @@
 using HaselCommon.Gui.ImGuiTable;
-using ImGuiNET;
 using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Quests.Columns;
@@ -16,5 +15,5 @@ public class RepeatableColumn : ColumnBool<Quest>
         => row.IsRepeatable;
 
     public override unsafe void DrawColumn(Quest row)
-        => ImGui.TextUnformatted(Names[ToBool(row) ? 1 : 0]);
+        => ImGui.Text(Names[ToBool(row) ? 1 : 0]);
 }
