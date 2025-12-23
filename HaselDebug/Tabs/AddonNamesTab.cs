@@ -1,10 +1,8 @@
-using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -44,9 +42,8 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
     {
         public IndexColumn()
         {
-            Label = "Index";
-            Flags = ImGuiTableColumnFlags.WidthFixed;
-            Width = 60;
+            LabelKey = "IndexColumn.Label";
+            SetFixedWidth(60);
         }
 
         public override int ToValue(AddonNameEntry row)
@@ -56,7 +53,7 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
 
         public override void DrawColumn(AddonNameEntry row)
         {
-            ImGuiUtilsEx.DrawCopyableText(ToName(row));
+            ImGuiUtils.DrawCopyableText(ToName(row));
         }
     }
 
@@ -65,7 +62,7 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
     {
         public NameColumn()
         {
-            Label = "Name";
+            LabelKey = "NameColumn.Label";
         }
 
         public override string ToName(AddonNameEntry row)
@@ -75,15 +72,7 @@ public partial class AddonNameTable : Table<AddonNameEntry>, IDisposable
 
         public override unsafe void DrawColumn(AddonNameEntry row)
         {
-            ImGuiUtilsEx.DrawCopyableText(ToName(row));
-
-            if (ImGui.IsItemClicked())
-            {
-                var values = stackalloc AtkValue[3];
-                values[0].SetManagedString("Test");
-                values[1].SetUInt(0);
-                RaptureAtkModule.Instance()->OpenAddon((uint)row.Index, 2, values, null, 0, 0, 0);
-            }
+            ImGuiUtils.DrawCopyableText(ToName(row));
         }
     }
 }

@@ -1,13 +1,10 @@
-using System.Linq;
 using HaselCommon.Gui.ImGuiTable;
-using HaselCommon.Services;
 using HaselDebug.Tabs.UnlocksTabs.ChocoboTaxiStands.Columns;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.ChocoboTaxiStands;
 
 [RegisterSingleton, AutoConstruct]
-public unsafe partial class AdventuresTable : Table<ChocoboTaxiStand>
+public unsafe partial class ChocoboTaxiStandsTable : Table<ChocoboTaxiStand>
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
@@ -28,6 +25,6 @@ public unsafe partial class AdventuresTable : Table<ChocoboTaxiStand>
     {
         Rows = [.. _excelService
             .GetSheet<ChocoboTaxiStand>()
-            .Where(row => row.RowId != 0 && !row.PlaceName.IsEmpty)];
+            .Where(row => row.RowId is not (0 or 1179648 or 1179649 or 1179678) && !row.PlaceName.IsEmpty)];
     }
 }

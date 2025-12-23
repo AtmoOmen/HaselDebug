@@ -1,11 +1,10 @@
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Fish.Columns;
 
 [RegisterTransient]
-public class CaughtColumn : ColumnBool<FishParameter>
+public class CaughtColumn : ColumnYesNo<FishParameter>
 {
     public CaughtColumn()
     {

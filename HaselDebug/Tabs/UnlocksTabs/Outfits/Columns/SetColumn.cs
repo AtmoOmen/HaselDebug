@@ -1,13 +1,5 @@
-using System.Numerics;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
 using HaselCommon.Gui.ImGuiTable;
-using HaselCommon.Services;
-using HaselDebug.Sheets;
+using HaselCommon.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
 
@@ -32,7 +24,11 @@ public partial class SetColumn : ColumnString<CustomMirageStoreSetItem>
 
     public override unsafe void DrawColumn(CustomMirageStoreSetItem row)
     {
-        var isSetCollected = ItemFinderModule.Instance()->GlamourDresserItemIds.Contains(row.RowId);
+        var isSetInGlamourDresser = OutfitsTable.TryGetSetItemBitArray(row, out var bitArray);
+        var isFullSetCollected = isSetInGlamourDresser && row.Items
+            .Index()
+            .Where((kv) => kv.Item.RowId != 0)
+            .All((kv) => bitArray.TryGet(kv.Index, out var slotLocked) && !slotLocked);
 
         ImGui.BeginGroup();
         ImGui.Dummy(ImGuiHelpers.ScaledVector2(IconSize));
@@ -42,7 +38,7 @@ public partial class SetColumn : ColumnString<CustomMirageStoreSetItem>
             (uint)row.Set.Value.Icon,
             new(IconSize * ImGuiHelpers.GlobalScale)
             {
-                TintColor = isSetCollected
+                TintColor = isSetInGlamourDresser
                     ? Color.White
                     : ImGui.IsItemHovered() || ImGui.IsPopupOpen($"###Set_{row.RowId}_Icon_ItemContextMenu")
                         ? Color.White : Color.Grey3
@@ -61,7 +57,7 @@ public partial class SetColumn : ColumnString<CustomMirageStoreSetItem>
             ImGui.Text(ToName(row));
         }
 
-        if (isSetCollected)
+        if (isFullSetCollected)
             OutfitsTable.DrawCollectedCheckmark(_textureProvider);
 
         ImGui.SameLine();

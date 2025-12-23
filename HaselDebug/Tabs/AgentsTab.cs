@@ -1,20 +1,14 @@
 using System.Collections.Immutable;
-using System.Linq;
-using System.Numerics;
 using System.Reflection;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.Attributes;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Tabs;
 
@@ -24,10 +18,12 @@ public unsafe partial class AgentsTab : DebugTab
     private readonly IServiceProvider _serviceProvider;
     private readonly TextService _textService;
     private readonly LanguageProvider _languageProvider;
+    private readonly TypeService _typeService;
     private readonly DebugRenderer _debugRenderer;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly WindowManager _windowManager;
+    private readonly NavigationService _navigationService;
 
     private ImmutableSortedDictionary<AgentId, (Pointer<AgentInterface> Address, Type Type)>? _agents;
     private AgentId _selectedAgentId = AgentId.Lobby;
@@ -42,6 +38,12 @@ public unsafe partial class AgentsTab : DebugTab
             .ToImmutableSortedDictionary(
                 type => type.GetCustomAttribute<AgentAttribute>()!.Id,
                 type => ((Pointer<AgentInterface>)AgentModule.Instance()->GetAgentByInternalId(type.GetCustomAttribute<AgentAttribute>()!.Id), type));
+
+        if (_navigationService.CurrentNavigation is AgentNavigation agentNav)
+        {
+            _selectedAgentId = agentNav.AgentId;
+            _navigationService.Reset();
+        }
 
         DrawAgentsList();
 
@@ -97,13 +99,11 @@ public unsafe partial class AgentsTab : DebugTab
             }
             _imGuiContextMenu.Draw($"ContextMenuAgent{i}", builder =>
             {
-                if (!_debugRenderer.AgentTypes.TryGetValue(agentId, out var agentType))
-                    agentType = typeof(AgentInterface);
-
+                var agentType = _typeService.GetAgentType(agentId);
                 var isPinned = _pinnedInstances.Contains(agentType);
 
-                builder.AddCopyName(_textService, agentId.ToString());
-                builder.AddCopyAddress(_textService, (nint)agent.Value);
+                builder.AddCopyName(agentId.ToString());
+                builder.AddCopyAddress((nint)agent.Value);
 
                 builder.AddSeparator();
 

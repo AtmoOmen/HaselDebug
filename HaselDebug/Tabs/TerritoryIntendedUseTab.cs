@@ -1,15 +1,11 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using Dalamud.Interface.Utility.Raii;
+using System.Threading.Tasks;
 using Dalamud.Utility;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
-using TerritoryIntendedUseEnum = HaselCommon.Game.Enums.TerritoryIntendedUse;
+using TerritoryIntendedUseEnum = FFXIVClientStructs.FFXIV.Client.Enums.TerritoryIntendedUse;
 
 namespace HaselDebug.Tabs;
 
@@ -20,22 +16,22 @@ public unsafe partial class TerritoryIntendedUseTab : DebugTab
     private readonly TextService _textService;
     private readonly DebugRenderer _debugRenderer;
 
-    private ImmutableSortedDictionary<uint, List<(TerritoryType, ContentFinderCondition[])>> _dict;
-    private bool _isInitialized;
+    private ImmutableSortedDictionary<uint, List<(TerritoryType, IReadOnlyList<uint>)>> _dict;
+    private Task? _loadTask;
 
-    private void Initialize()
+    private void LoadData()
     {
-        var dict = new Dictionary<uint, List<(TerritoryType, ContentFinderCondition[])>>();
+        var dict = new Dictionary<uint, List<(TerritoryType, IReadOnlyList<uint>)>>();
 
         foreach (var territoryTypes in _excelService.GetSheet<TerritoryType>().GroupBy(row => row.TerritoryIntendedUse.RowId))
         {
-            var list = new List<(TerritoryType, ContentFinderCondition[])>();
+            var list = new List<(TerritoryType, IReadOnlyList<uint>)>();
 
             foreach (var territoryType in territoryTypes)
             {
                 list.Add((
                     territoryType,
-                    _excelService.FindRows<ContentFinderCondition>(cfcRow => cfcRow.TerritoryType.RowId == territoryType.RowId)));
+                    [.. _excelService.FindRows<ContentFinderCondition>(cfcRow => cfcRow.TerritoryType.RowId == territoryType.RowId).Select(row => row.RowId)]));
             }
 
             dict[territoryTypes.Key] = list;
@@ -46,10 +42,18 @@ public unsafe partial class TerritoryIntendedUseTab : DebugTab
 
     public override void Draw()
     {
-        if (!_isInitialized)
+        _loadTask ??= Task.Run(LoadData);
+
+        if (!_loadTask.IsCompleted)
         {
-            Initialize();
-            _isInitialized = true;
+            ImGui.Text("Loading...");
+            return;
+        }
+
+        if (_loadTask.IsFaulted)
+        {
+            ImGuiUtilsEx.DrawAlertError("TaskError", _loadTask.Exception?.ToString() ?? "Error loading data :(");
+            return;
         }
 
         foreach (var territoryIntendedUse in Enum.GetValues<TerritoryIntendedUseEnum>())
@@ -81,17 +85,20 @@ public unsafe partial class TerritoryIntendedUseTab : DebugTab
                     Title = $"[TerritoryType#{kv2.Item1.RowId}]{placeName}{zoneName}"
                 });
 
-                if (kv2.Item2.Length == 0)
+                if (kv2.Item2.Count == 0)
                     continue;
 
                 using var indent = ImRaii.PushIndent();
 
-                foreach (var cfc in kv2.Item2)
+                foreach (var cfcRowId in kv2.Item2)
                 {
-                    _debugRenderer.DrawExdRow(typeof(ContentFinderCondition), cfc.RowId, 0, new NodeOptions()
+                    if (!_excelService.TryGetRow<ContentFinderCondition>(cfcRowId, out var cfcRow))
+                        continue;
+
+                    _debugRenderer.DrawExdRow(typeof(ContentFinderCondition), cfcRowId, 0, new NodeOptions()
                     {
                         AddressPath = new AddressPath([(nint)territoryIntendedUse]),
-                        Title = $"[ContentFinderCondition#{cfc.RowId}] {cfc.Name.ToString().FirstCharToUpper()}"
+                        Title = $"[ContentFinderCondition#{cfcRowId}] {cfcRow.Name.ToString().FirstCharToUpper()}"
                     });
                 }
             }

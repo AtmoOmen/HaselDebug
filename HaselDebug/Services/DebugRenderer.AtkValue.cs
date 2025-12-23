@@ -1,7 +1,6 @@
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using HaselDebug.Service;
 using HaselDebug.Utils;
-using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
 
 namespace HaselDebug.Services;
 
@@ -9,6 +8,18 @@ public unsafe partial class DebugRenderer
 {
     public void DrawAtkValue(nint address, NodeOptions nodeOptions)
     {
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
         nodeOptions = nodeOptions.WithAddress(address);
 
         var value = (AtkValue*)address;
@@ -21,7 +32,7 @@ public unsafe partial class DebugRenderer
                 ImGui.Text("Null"u8);
                 break;
             case ValueType.Bool:
-                ImGuiUtilsEx.DrawCopyableText($"{value->Byte == 0x01}");
+                ImGuiUtils.DrawCopyableText($"{value->Byte == 0x01}");
                 break;
             case ValueType.Int:
                 DrawNumeric((nint)(&value->Int), typeof(int), nodeOptions);
@@ -64,6 +75,19 @@ public unsafe partial class DebugRenderer
 
     public void DrawAtkValues(AtkValue* values, ushort elementCount, NodeOptions nodeOptions)
     {
+        var address = (nint)values;
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
         if (elementCount == 0)
         {
             ImGui.Text("No values"u8);

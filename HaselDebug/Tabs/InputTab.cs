@@ -1,13 +1,7 @@
-using System.Collections.Generic;
-using System.Numerics;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
 
@@ -83,14 +77,14 @@ public unsafe partial class InputTab : DebugTab
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn();
-            ImGuiUtilsEx.DrawCopyableText($"{i}");
+            ImGuiUtils.DrawCopyableText($"{i}");
 
             ImGui.TableNextColumn();
-            ImGuiUtilsEx.DrawCopyableText($"{(InputId)i}");
+            ImGuiUtils.DrawCopyableText($"{(InputId)i}");
 
             ImGui.TableNextColumn();
             if (_inputKey2ConfigKey.TryGetValue((InputId)i, out var configKeyRow))
-                ImGuiUtilsEx.DrawCopyableText(configKeyRow.Text.ToString());
+                ImGuiUtils.DrawCopyableText(configKeyRow.Text.ToString());
 
             ImGui.TableNextColumn();
             DrawKeybind(ref keybind->KeySettings[0]);
@@ -149,7 +143,7 @@ public unsafe partial class InputTab : DebugTab
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn();
-            ImGuiUtilsEx.DrawCopyableText($"{inputId}");
+            ImGuiUtils.DrawCopyableText($"{inputId}");
 
             ImGui.TableNextColumn();
             ImGui.Text($"{isPress}");
@@ -199,7 +193,7 @@ public unsafe partial class InputTab : DebugTab
             ImGui.TableNextRow();
 
             ImGui.TableNextColumn();
-            ImGuiUtilsEx.DrawCopyableText($"{seVirtualKey}");
+            ImGuiUtils.DrawCopyableText($"{seVirtualKey}");
 
             ImGui.TableNextColumn();
             ImGui.Text($"{isPress}");
@@ -226,16 +220,16 @@ public unsafe partial class InputTab : DebugTab
         if ((int)keySetting.Key < 167)
         {
             if (keySetting.KeyModifier == KeyModifierFlag.None)
-                ImGuiUtilsEx.DrawCopyableText($"{keySetting.Key}");
+                ImGuiUtils.DrawCopyableText($"{keySetting.Key}");
             else
-                ImGuiUtilsEx.DrawCopyableText($"{keySetting.KeyModifier}+{keySetting.Key}");
+                ImGuiUtils.DrawCopyableText($"{keySetting.KeyModifier}+{keySetting.Key}");
 
             return;
         }
 
         if (keySetting.GamepadModifier == GamepadModifierFlag.None)
-            ImGuiUtilsEx.DrawCopyableText($"{keySetting.Key}");
+            ImGuiUtils.DrawCopyableText($"{keySetting.Key}");
         else
-            ImGuiUtilsEx.DrawCopyableText($"{keySetting.GamepadModifier}+{keySetting.Key}");
+            ImGuiUtils.DrawCopyableText($"{keySetting.GamepadModifier}+{keySetting.Key}");
     }
 }

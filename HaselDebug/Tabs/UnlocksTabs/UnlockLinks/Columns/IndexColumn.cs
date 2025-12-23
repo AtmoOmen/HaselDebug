@@ -16,4 +16,7 @@ public class IndexColumn : ColumnNumber<UnlockLinkEntry>
 
     public override int ToValue(UnlockLinkEntry entry)
         => (int)entry.Index;
+
+    public override void DrawColumn(UnlockLinkEntry row)
+        => ImGuiUtils.DrawCopyableText(ToName(row));
 }

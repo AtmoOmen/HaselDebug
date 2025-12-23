@@ -1,7 +1,5 @@
-using System.Numerics;
-using HaselCommon.Gui;
-using HaselCommon.Services;
 using HaselDebug.Config;
+using HaselDebug.Services;
 
 namespace HaselDebug.Windows;
 
@@ -35,7 +33,26 @@ public partial class ConfigWindow : SimpleWindow
         // AutoOpenPluginWindow
         configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.AutoOpenPluginWindow.Label")}##AutoOpenPluginWindow", ref _pluginConfig.AutoOpenPluginWindow);
 
+        // EnableLuaLogger
+        configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.EnableLuaLogger.Label")}##EnableLuaLogger", ref _pluginConfig.EnableLuaLogger);
+
+        using (ImGuiUtils.ConfigIndent())
+            ImGui.TextColoredWrapped(Color.Grey3, _textService.Translate("Config.EnableLuaLogger.Description"));
+
+        // ResolveAddonLifecycleVTables
+        configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.ResolveAddonLifecycleVTables.Label")}##ResolveAddonLifecycleVTables", ref _pluginConfig.ResolveAddonLifecycleVTables);
+
         if (configChanged)
+        {
             _pluginConfig.Save();
+
+            if (ServiceLocator.TryGetService<LuaLogger>(out var luaLogger))
+            {
+                if (_pluginConfig.EnableLuaLogger)
+                    luaLogger.Enable();
+                else
+                    luaLogger.Disable();
+            }
+        }
     }
 }

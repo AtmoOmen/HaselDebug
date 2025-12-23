@@ -3,10 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Dalamud.Configuration;
-using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Config;
 
@@ -73,6 +70,9 @@ public partial class PluginConfig
 {
     public int Version { get; set; } = CURRENT_CONFIG_VERSION;
     public bool AutoOpenPluginWindow = false;
+    public bool EnableLuaLogger = false;
+    public bool ResolveAddonLifecycleVTables = true;
     public string LastSelectedTab = "";
     public string[] PinnedInstances = [];
+    public bool Excel2Tab_ShowRawSheets = false;
 }

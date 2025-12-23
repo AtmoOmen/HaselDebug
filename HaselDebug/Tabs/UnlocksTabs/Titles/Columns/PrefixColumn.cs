@@ -1,10 +1,9 @@
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Titles.Columns;
 
 [RegisterTransient]
-public class PrefixColumn : ColumnBool<Title>
+public class PrefixColumn : ColumnYesNo<Title>
 {
     public PrefixColumn()
     {

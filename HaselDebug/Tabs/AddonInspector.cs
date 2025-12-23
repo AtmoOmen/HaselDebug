@@ -1,12 +1,5 @@
-using System.Collections.Generic;
-using System.Numerics;
-using Dalamud.Interface;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
@@ -21,12 +14,14 @@ public unsafe partial class AddonInspectorTab : DebugTab
     private readonly IServiceProvider _serviceProvider;
     private readonly TextService _textService;
     private readonly LanguageProvider _languageProvider;
+    private readonly TypeService _typeService;
     private readonly DebugRenderer _debugRenderer;
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly WindowManager _windowManager;
     private readonly AddonObserver _addonObserver;
     private readonly AtkDebugRenderer _atkDebugRenderer;
+    private readonly NavigationService _navigationService;
 
     private ushort _selectedAddonId = 0;
     private string _selectedAddonName = string.Empty;
@@ -46,11 +41,27 @@ public unsafe partial class AddonInspectorTab : DebugTab
         using var hostchild = ImRaii.Child("AddonInspectorTabChild", new Vector2(-1), false, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
         if (!hostchild) return;
 
+        if (_navigationService.CurrentNavigation is AddonNavigation addonNav)
+        {
+            _selectedAddonId = addonNav.AddonId;
+            _selectedAddonName = addonNav.AddonName ?? string.Empty;
+            _navigationService.Reset();
+        }
+
         DrawAddonList();
+
         ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
-        _atkDebugRenderer.DrawAddon(_selectedAddonId, _selectedAddonName, _nodePath);
+
+        _atkDebugRenderer.DrawAddon(new DrawAddonParams()
+        {
+            AddonId = _selectedAddonId,
+            AddonName = _selectedAddonName,
+            NodePath = _nodePath
+        });
+
         if (_nodePath != null)
             _nodePath = null;
+
         DrawNodePicker();
     }
 
@@ -173,13 +184,11 @@ public unsafe partial class AddonInspectorTab : DebugTab
 
             _imGuiContextMenu.Draw($"##Addon_{addonId}_{addonName}_Context", builder =>
             {
-                if (!_debugRenderer.AddonTypes.TryGetValue(addonName, out var type))
-                    type = typeof(AtkUnitBase);
-
+                var type = _typeService.GetAddonType(addonName);
                 var isPinned = _pinnedInstances.Contains(addonName);
 
-                builder.AddCopyName(_textService, addonName);
-                builder.AddCopyAddress(_textService, (nint)unitBase);
+                builder.AddCopyName(addonName);
+                builder.AddCopyAddress((nint)unitBase);
 
                 builder.AddSeparator();
 

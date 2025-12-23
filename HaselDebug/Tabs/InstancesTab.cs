@@ -1,8 +1,3 @@
-using System.Numerics;
-using System.Reflection;
-using Dalamud.Interface.Utility.Raii;
-using FFXIVClientStructs.Attributes;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
@@ -21,6 +16,7 @@ public partial class InstancesTab : DebugTab
     private readonly WindowManager _windowManager;
     private readonly InstancesService _instancesService;
     private readonly PinnedInstancesService _pinnedInstances;
+    private readonly TypeService _typeService;
 
     private string _searchTerm = string.Empty;
 
@@ -32,17 +28,19 @@ public partial class InstancesTab : DebugTab
 
         using var contentChild = ImRaii.Child("Content", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
 
-        var i = 0;
-        foreach (var (ptr, type) in _instancesService.Instances)
+        foreach (var (i, (ptr, type)) in _instancesService.Instances.Index())
         {
-            if (type.GetCustomAttribute<AgentAttribute>() != null) continue;
-            if (hasSearchTerm && !type.FullName!.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) continue;
+            if (_typeService.AgentTypes != null && _typeService.AgentTypes.ContainsValue(type))
+                continue;
+
+            if (hasSearchTerm && !type.FullName!.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                continue;
 
             _debugRenderer.DrawAddress(ptr);
             ImGui.SameLine(120);
             _debugRenderer.DrawPointerType(ptr, type, new NodeOptions()
             {
-                AddressPath = new AddressPath(i++),
+                AddressPath = new AddressPath(i),
                 DrawContextMenu = (nodeOptions, builder) =>
                 {
                     var isPinned = _pinnedInstances.Contains(type);

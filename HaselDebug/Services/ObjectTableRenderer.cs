@@ -1,12 +1,5 @@
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
-using HaselCommon.Gui;
-using HaselCommon.Services;
-using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
-using Lumina.Text.ReadOnly;
 
 namespace HaselDebug.Services;
 
@@ -67,13 +60,13 @@ public unsafe partial class ObjectTableRenderer
             _debugRenderer.DrawAddress(gameObject);
 
             ImGui.TableNextColumn(); // EntityId
-            ImGuiUtilsEx.DrawCopyableText(gameObject->EntityId.ToString("X"));
+            ImGuiUtils.DrawCopyableText(gameObject->EntityId.ToString("X"));
 
             ImGui.TableNextColumn(); // ObjectId
-            ImGuiUtilsEx.DrawCopyableText(gameObject->GetGameObjectId().Id.ToString("X"));
+            ImGuiUtils.DrawCopyableText(gameObject->GetGameObjectId().Id.ToString("X"));
 
             ImGui.TableNextColumn(); // ObjectKind
-            ImGuiUtilsEx.DrawCopyableText(objectKind.ToString());
+            ImGuiUtils.DrawCopyableText(objectKind.ToString());
 
             ImGui.TableNextColumn(); // Name
             _debugRenderer.DrawPointerType(

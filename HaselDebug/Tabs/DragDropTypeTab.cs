@@ -1,23 +1,28 @@
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 
 namespace HaselDebug.Tabs;
 
 [RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class DragDropTypeTab : DebugTab
+public partial class DragDropTypeTab : DebugTab
 {
+    private int _count = 0;
+
+    [AutoPostConstruct]
+    private void Initialize()
+    {
+        _count = (int)Enum.GetValues<DragDropType>().Max();
+    }
+
     public override void Draw()
     {
-        for (var i = 1; i < 88; i++)
+        for (var i = 1; i <= _count; i++)
         {
             using var treeNode = ImRaii.TreeNode($"[{i}] {(DragDropType)i}", ImGuiTreeNodeFlags.SpanAvailWidth);
             if (!treeNode) continue;
 
-            using var table = ImRaii.Table($"DragDropTypeTable{i}", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings);
+            using var table = ImRaii.Table($"DragDropTypeTable{i}", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(-1, 600));
             if (!table)
                 return;
 
@@ -26,7 +31,7 @@ public unsafe partial class DragDropTypeTab : DebugTab
             ImGui.TableSetupScrollFreeze(1, 1);
             ImGui.TableHeadersRow();
 
-            for (var j = 1; j < 88; j++)
+            for (var j = 1; j <= _count; j++)
             {
                 ImGui.TableNextRow();
 

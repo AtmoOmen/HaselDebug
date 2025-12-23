@@ -1,7 +1,4 @@
-using Dalamud.Game;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
@@ -14,6 +11,8 @@ public unsafe partial class CurrencyManagerTab : DebugTab
 {
     private readonly DebugRenderer _debugRenderer;
     private readonly TextService _textService;
+    private readonly ItemService _itemService;
+    private readonly UnlocksTabUtils _unlocksTabUtils;
 
     public override string Title => "CurrencyManager";
 
@@ -40,7 +39,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                     {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(itemId.ToString());
+                        ImGuiUtils.DrawCopyableText(itemId.ToString());
                         ImGui.TableNextColumn();
                         ImGui.Text(item.SpecialId.ToString());
                         ImGui.TableNextColumn();
@@ -49,7 +48,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                         if (currencyManager->IsItemLimited(itemId))
                             ImGui.Text(currencyManager->GetItemCountRemaining(itemId).ToString());
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(_textService.GetItemName(itemId, ImGui.IsKeyDown(ImGuiKey.LeftShift) ? ClientLanguage.English : null).ToString());
+                        _unlocksTabUtils.DrawSelectableItem(itemId, $"SpecialItemBucketCurrency{itemId}");
                     }
                 }
             }
@@ -73,7 +72,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                     {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(itemId.ToString());
+                        ImGuiUtils.DrawCopyableText(itemId.ToString());
                         ImGui.TableNextColumn();
                         ImGui.Text($"{item.Count} / {item.MaxCount}");
                         ImGui.TableNextColumn();
@@ -82,7 +81,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                         ImGui.TableNextColumn();
                         ImGui.Text(item.IsUnlimited.ToString());
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(_textService.GetItemName(itemId, ImGui.IsKeyDown(ImGuiKey.LeftShift) ? ClientLanguage.English : null).ToString());
+                        _unlocksTabUtils.DrawSelectableItem(itemId, $"ItemBucketCurrency{itemId}");
                     }
                 }
             }
@@ -106,7 +105,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                     {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(itemId.ToString());
+                        ImGuiUtils.DrawCopyableText(itemId.ToString());
                         ImGui.TableNextColumn();
                         ImGui.Text($"{item.Count} / {item.MaxCount}");
                         ImGui.TableNextColumn();
@@ -115,7 +114,7 @@ public unsafe partial class CurrencyManagerTab : DebugTab
                         ImGui.TableNextColumn();
                         ImGui.Text(item.IsUnlimited.ToString());
                         ImGui.TableNextColumn();
-                        ImGuiUtilsEx.DrawCopyableText(_textService.GetItemName(itemId, ImGui.IsKeyDown(ImGuiKey.LeftShift) ? ClientLanguage.English : null).ToString());
+                        _unlocksTabUtils.DrawSelectableItem(itemId, $"ContentItemBucketCurrency{itemId}");
                     }
                 }
             }

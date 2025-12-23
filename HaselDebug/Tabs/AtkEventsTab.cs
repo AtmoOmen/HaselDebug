@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using Dalamud.Hooking;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -18,13 +14,6 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
     private readonly List<(DateTime, nint)> _events = [];
     private Hook<AtkEventDispatcher.Delegates.DispatchEvent>? _dispatchEventHook;
     private bool _enabled = false;
-    private bool _isInitialized;
-
-    private void Initialize()
-    {
-        _dispatchEventHook = _gameInteropProvider.HookFromAddress<AtkEventDispatcher.Delegates.DispatchEvent>(AtkEventDispatcher.MemberFunctionPointers.DispatchEvent, DispatchEventDetour);
-        //_dispatchEventHook?.Enable();
-    }
 
     public void Dispose()
     {
@@ -60,17 +49,7 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
 
     public override void Draw()
     {
-        if (!_isInitialized)
-        {
-            Initialize();
-            _isInitialized = true;
-        }
-
-        if (_dispatchEventHook == null)
-        {
-            ImGui.Text("Hook not created"u8);
-            return;
-        }
+        _dispatchEventHook ??= _gameInteropProvider.HookFromAddress<AtkEventDispatcher.Delegates.DispatchEvent>(AtkEventDispatcher.MemberFunctionPointers.DispatchEvent, DispatchEventDetour);
 
         if (ImGui.Checkbox("Enabled", ref _enabled))
         {

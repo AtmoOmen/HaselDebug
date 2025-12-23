@@ -1,11 +1,8 @@
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
 
@@ -48,7 +45,7 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
             ImGui.TableNextColumn(); // Name
             _debugRenderer.DrawIcon((uint)row.RankParams[rank].ImageId);
 
-            if (_excelService.TryGetRow<Level>(row.Unknown0, out var level) &&
+            if (_excelService.TryGetRow<Level>(row.Level.RowId, out var level) &&
                 _teleportService.TryGetClosestAetheryte(level, out var aetheryte))
             {
                 var clicked = ImGui.Selectable(_textService.GetENpcResidentName(row.Npc.RowId));

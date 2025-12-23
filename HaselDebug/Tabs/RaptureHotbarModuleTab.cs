@@ -1,13 +1,8 @@
-using System.Numerics;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
 
@@ -113,6 +108,8 @@ public unsafe partial class RaptureHotbarModuleTab : DebugTab
                             RaptureHotbarModule.HotbarSlotType.Ornament => _textService.GetOrnamentName(slot->CommandId),
                             // LostFindsItem
                             RaptureHotbarModule.HotbarSlotType.Glasses => _textService.GetGlassesName(slot->CommandId),
+                            RaptureHotbarModule.HotbarSlotType.PhantomAction => _textService.GetAddonText(slot->CommandId switch { 1 => 16296, 2 => 16298, _ => 0 }),
+                            RaptureHotbarModule.HotbarSlotType.QuickPanel => _seStringEvaluatorService.EvaluateFromAddon(17215, [slot->CommandId + 1]).ToString(),
                             _ => string.Empty
                         }
                     });

@@ -1,6 +1,4 @@
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.STD;
-using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
@@ -11,6 +9,18 @@ public unsafe partial class DebugRenderer
 {
     public void DrawStdDeque(nint address, Type valueType, NodeOptions nodeOptions)
     {
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
         var elementCount = *(ulong*)(address + 0x20); // MySize
         if (elementCount == 0)
         {
@@ -24,7 +34,7 @@ public unsafe partial class DebugRenderer
         {
             DrawContextMenu = (nodeOptions, builder) =>
             {
-                builder.AddCopyAddress(_textService, address);
+                builder.AddCopyAddress(address);
                 builder.AddSeparator();
                 builder.Add(new ImGuiContextMenuEntry()
                 {

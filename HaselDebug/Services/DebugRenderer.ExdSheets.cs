@@ -1,10 +1,6 @@
-using System.Linq;
 using System.Reflection;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
 using HaselDebug.Utils;
-using Lumina.Excel;
-using Lumina.Text.ReadOnly;
 
 namespace HaselDebug.Services;
 
@@ -35,10 +31,14 @@ public unsafe partial class DebugRenderer
 
         foreach (var propInfo in sheetType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
-            if (propInfo.Name == "RowId")
+            if (propInfo.Name is "RowId" or "ExcelPage" or "RowOffset")
                 continue;
 
-            ImGuiUtilsEx.DrawCopyableText(propInfo.PropertyType.ReadableTypeName(), propInfo.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
+            ImGuiUtils.DrawCopyableText(propInfo.PropertyType.ReadableTypeName(), new()
+            {
+                CopyText = propInfo.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
+                TextColor = ColorType
+            });
             ImGui.SameLine();
             ImGui.TextColored(ColorFieldName, propInfo.Name);
             ImGui.SameLine();
@@ -219,10 +219,14 @@ public unsafe partial class DebugRenderer
 
                     foreach (var pi in collectionType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
                     {
-                        if (pi.Name == "RowId")
+                        if (propInfo.Name is "RowId" or "ExcelPage" or "RowOffset")
                             continue;
 
-                        ImGuiUtilsEx.DrawCopyableText(pi.PropertyType.ReadableTypeName(), pi.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
+                        ImGuiUtils.DrawCopyableText(pi.PropertyType.ReadableTypeName(), new()
+                        {
+                            CopyText = pi.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
+                            TextColor = ColorType
+                        });
                         ImGui.SameLine();
                         ImGui.TextColored(ColorFieldName, pi.Name);
                         ImGui.SameLine();

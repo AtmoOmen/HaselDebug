@@ -1,8 +1,5 @@
-using System.Numerics;
-using HaselCommon.Gui;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Windows;
 
@@ -21,6 +18,7 @@ public partial class PointerTypeWindow : SimpleWindow
         _address = address;
         _type = type;
         WindowName = $"{name}##{type.Name}";
+        WindowNameKey = string.Empty;
     }
 
     public override void OnOpen()

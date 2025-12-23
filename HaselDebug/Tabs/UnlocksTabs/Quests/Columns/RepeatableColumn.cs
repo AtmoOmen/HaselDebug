@@ -1,10 +1,9 @@
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Quests.Columns;
 
 [RegisterTransient]
-public class RepeatableColumn : ColumnBool<Quest>
+public class RepeatableColumn : ColumnYesNo<Quest>
 {
     public RepeatableColumn()
     {

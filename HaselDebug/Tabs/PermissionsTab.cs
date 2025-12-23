@@ -1,15 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using HaselCommon.Graphics;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using InteropGenerator.Runtime.Attributes;
-using Lumina.Excel;
 
 namespace HaselDebug.Tabs;
 
@@ -55,7 +48,7 @@ public unsafe partial class PermissionsTab : DebugTab
                 continue;
 
             using var color = ImRaii.PushColor(ImGuiCol.Text, hasPermission ? Color.Green : Color.Red);
-            using var node = ImRaii.TreeNode($"Permission#{row.RowId}", ImGuiTreeNodeFlags.SpanAvailWidth);
+            using var node = ImRaii.TreeNode(GetPermissionName(row.RowId), ImGuiTreeNodeFlags.SpanAvailWidth);
             color.Dispose();
             if (!node) continue;
 
@@ -97,6 +90,19 @@ public unsafe partial class PermissionsTab : DebugTab
             }
         }
     }
+
+    private string GetPermissionName(uint rowId)
+    {
+        var name = $"Permission #{rowId}";
+
+        switch (rowId)
+        {
+            case 150: name += " - Idle Camera"; break;
+            case 178: name += " - Group Pose"; break;
+        }
+
+        return name;
+    }
 }
 
 [GenerateInterop]
@@ -105,7 +111,7 @@ public unsafe partial struct ConditionEx
 {
     public static ConditionEx* Instance() => (ConditionEx*)Conditions.Instance();
 
-    [FieldOffset(0), FixedSizeArray] internal FixedSizeArray104<bool> _flags;
+    [FieldOffset(0), FixedSizeArray] internal FixedSizeArray112<bool> _flags;
 
     [MemberFunction("E8 ?? ?? ?? ?? 84 C0 75 ?? 8B FB")]
     public partial bool HasPermission(uint permissionId, int excludedCondition1 = 0, int excludedCondition2 = 0);
@@ -114,9 +120,11 @@ public unsafe partial struct ConditionEx
 [Sheet("Permission")]
 public readonly unsafe struct CustomPermission(ExcelPage page, uint offset, uint row) : IExcelRow<CustomPermission>
 {
+    public ExcelPage ExcelPage => page;
+    public uint RowOffset => offset;
     public uint RowId => row;
 
-    public readonly Collection<bool> Conditions => new(page, offset, offset, &ConditionCtor, 104);
+    public readonly Collection<bool> Conditions => new(page, offset, offset, &ConditionCtor, 112);
     private static bool ConditionCtor(ExcelPage page, uint parentOffset, uint offset, uint i) => page.ReadBool(offset + i);
 
     static CustomPermission IExcelRow<CustomPermission>.Create(ExcelPage page, uint offset, uint row) =>

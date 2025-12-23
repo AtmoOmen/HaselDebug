@@ -1,11 +1,10 @@
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Spearfish.Columns;
 
 [RegisterTransient]
-public class CaughtColumn : ColumnBool<SpearfishingItem>
+public class CaughtColumn : ColumnYesNo<SpearfishingItem>
 {
     public CaughtColumn()
     {

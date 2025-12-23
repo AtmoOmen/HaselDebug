@@ -1,24 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using Dalamud.Game;
 using Dalamud.Game.Text.Evaluator;
 using Dalamud.Interface.ImGuiSeStringRenderer;
-using Dalamud.Interface.Utility;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
-using HaselCommon.Services;
-using HaselCommon.Utils;
+using HaselDebug.Extensions;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Text.Expressions;
 using Lumina.Text.Parse;
-using Lumina.Text.ReadOnly;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Windows;
 
@@ -64,7 +52,7 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
     public bool IsValidUtf8String
         => Node != null &&
             Utf8String != null &&
-            RaptureAtkUnitManager.Instance()->GetAddonByNode(Node) != null;
+            RaptureAtkUnitManager.Instance()->AtkUnitManager.GetAddonByNodeSafe(Node) != null;
 
     [AutoPostConstruct]
     private void Initialize()
@@ -114,8 +102,13 @@ public unsafe partial class SeStringInspectorWindow : SimpleWindow
             if (ImGui.InputText("MacroString", ref _macroString, 1024, ImGuiInputTextFlags.EnterReturnsTrue))
             {
                 using var rssb = new RentedSeStringBuilder();
+
                 rssb.Builder.Append(ReadOnlySeString.FromMacroString(_macroString, new MacroStringParseOptions { ExceptionMode = MacroStringParseExceptionMode.Ignore }));
-                Utf8String->SetString(rssb.Builder.GetViewAsSpan());
+
+                if (!rssb.Builder.ToReadOnlySeString().IsEmpty)
+                    Utf8String->SetString(rssb.Builder.GetViewAsSpan());
+                else
+                    Utf8String->Clear();
             }
         }
 

@@ -1,4 +1,3 @@
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -6,7 +5,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -63,7 +61,7 @@ public unsafe partial class ContentsFinderDutyListTab : DebugTab
             var item = addon->DutyList->Items[i].Value;
             ImGui.Text($"{i}:");
             ImGui.SameLine();
-            ImGuiUtilsEx.DrawCopyableText($"{(nint)item:X}");
+            ImGuiUtils.DrawCopyableText($"{(nint)item:X}");
 
             using (ImRaii.PushIndent())
             {

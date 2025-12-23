@@ -1,45 +1,38 @@
-using System.Collections.Generic;
+using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Globalization;
-using System.Linq;
-using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Dalamud.Game;
 using Dalamud.Interface.Textures;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Memory;
-using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
-using FFXIVClientStructs.Attributes;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
+using FFXIVClientStructs.FFXIV.Client.Game.MassivePcContent;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using FFXIVClientStructs.FFXIV.Client.LayoutEngine;
 using FFXIVClientStructs.FFXIV.Client.LayoutEngine.Group;
 using FFXIVClientStructs.FFXIV.Client.System.Resource.Handle;
 using FFXIVClientStructs.FFXIV.Client.System.String;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.STD;
-using HaselCommon.Graphics;
-using HaselCommon.Services;
-using HaselCommon.Utils;
+using HaselDebug.Config;
+using HaselDebug.Extensions;
+using HaselDebug.Service;
+using HaselDebug.Services.Data;
 using HaselDebug.Utils;
-using InteropGenerator.Runtime;
-using InteropGenerator.Runtime.Attributes;
-using Lumina.Text.ReadOnly;
-using Microsoft.Extensions.Logging;
 using static Dalamud.Utility.StringExtensions;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUldManager;
 using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
+using InstanceContentType = FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType;
 using KernelTexture = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Texture;
 
 namespace HaselDebug.Services;
@@ -76,29 +69,12 @@ public unsafe partial class DebugRenderer
     private readonly IGameGui _gameGui;
     private readonly LanguageProvider _languageProvider;
     private readonly AddonObserver _addonObserver;
-
-    public ImmutableSortedDictionary<string, Type> AddonTypes { get; private set; }
-    public ImmutableSortedDictionary<AgentId, Type> AgentTypes { get; private set; }
-
-    [AutoPostConstruct]
-    public void Initialize()
-    {
-        var csAssembly = typeof(AddonAttribute).Assembly;
-
-        AddonTypes = csAssembly.GetTypes()
-            .Where(type => type.GetCustomAttribute<AddonAttribute>() != null)
-            .SelectMany(type => type.GetCustomAttribute<AddonAttribute>()!.AddonIdentifiers, (type, addonName) => (type, addonName))
-            .ToImmutableSortedDictionary(
-                tuple => tuple.addonName,
-                tuple => tuple.type);
-
-        AgentTypes = csAssembly.GetTypes()
-            .Where(type => type.GetCustomAttribute<AgentAttribute>() != null)
-            .Select(type => (type, agentId: type.GetCustomAttribute<AgentAttribute>()!.Id))
-            .ToImmutableSortedDictionary(
-                tuple => tuple.agentId,
-                tuple => tuple.type);
-    }
+    private readonly ExcelService _excelService;
+    private readonly NavigationService _navigationService;
+    private readonly DataYmlService _dataYml;
+    private readonly ProcessInfoService _processInfoService;
+    private readonly PluginConfig _pluginConfig;
+    private readonly IAddonLifecycle _addonLifecycle;
 
     public void DrawPointerType(void* obj, Type? type, NodeOptions nodeOptions)
         => DrawPointerType((nint)obj, type, nodeOptions);
@@ -107,13 +83,19 @@ public unsafe partial class DebugRenderer
     {
         if (type == null)
         {
-            ImGui.Text("");
+            ImGui.Text(""u8);
             return;
         }
 
-        if (address == 0 || address < 0x140000000)
+        if (address == 0)
         {
             ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
             return;
         }
 
@@ -125,13 +107,33 @@ public unsafe partial class DebugRenderer
 
         if (type == null)
         {
-            ImGui.Text("");
+            ImGui.Text(""u8);
             return;
         }
 
-        if (address == 0 || address < 0x140000000)
+        if (address == 0)
         {
             ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
+        // Get the original VTable address for addons from IAddonLifecycle, if it replaced it
+        if (_pluginConfig.ResolveAddonLifecycleVTables)
+        {
+            var originalAddress = _addonLifecycle.GetOriginalVirtualTable(address);
+            if (originalAddress != 0 && _processInfoService.IsPointerValid(originalAddress))
+                address = originalAddress;
+        }
+
+        if (type.IsPointer && type.GetElementType() == typeof(void))
+        {
+            DrawAddress(*(nint*)address);
             return;
         }
 
@@ -143,7 +145,7 @@ public unsafe partial class DebugRenderer
 
         if (type.IsVoid())
         {
-            ImGui.Text($"0x{address:X}"); // TODO: what did I do here?
+            ImGui.Text(""u8);
             return;
         }
 
@@ -253,6 +255,10 @@ public unsafe partial class DebugRenderer
                         additionalName = new ReadOnlySeStringSpan(((LuaEventHandler*)address)->LuaClass.AsSpan()).ToString();
                         break;
 
+                    case EventHandlerContent.Fishing:
+                        type = typeof(FishingEventHandler);
+                        break;
+
                     case EventHandlerContent.FateDirector:
                         type = typeof(FateDirector);
                         break;
@@ -292,6 +298,10 @@ public unsafe partial class DebugRenderer
 
                     case EventHandlerContent.GoldSaucerDirector:
                         type = typeof(GoldSaucerDirector);
+                        break;
+
+                    case EventHandlerContent.MassivePcContentDirector:
+                        type = typeof(MassivePcContentDirector);
                         break;
                 }
 
@@ -486,7 +496,12 @@ public unsafe partial class DebugRenderer
         }
         else if (type == typeof(StdString))
         {
-            ImGuiUtilsEx.DrawCopyableText(((StdString*)address)->ToString());
+            ImGuiUtils.DrawCopyableText(((StdString*)address)->ToString());
+            return;
+        }
+        else if (type == typeof(StdString))
+        {
+            ImGuiUtils.DrawCopyableText(((StdString*)address)->ToString());
             return;
         }
         else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(StdVector<>))
@@ -670,7 +685,13 @@ public unsafe partial class DebugRenderer
         foreach (var (fieldInfo, offset, size) in processedFields)
         {
             i++;
-            ImGuiUtilsEx.DrawCopyableText($"[0x{offset:X}]", ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"0x{offset:X}" : $"{address + offset:X}", textColor: Color.Grey3);
+
+            ImGuiUtils.DrawCopyableText($"[0x{offset:X}]", new()
+            {
+                CopyText = ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"{address + offset:X}" : $"0x{offset:X}",
+                TextColor = Color.Grey3
+            });
+
             ImGui.SameLine();
 
             var fieldNodeOptions = nodeOptions.WithAddress(i);
@@ -701,7 +722,12 @@ public unsafe partial class DebugRenderer
                 ImGui.SameLine();
             }
 
-            ImGuiUtilsEx.DrawCopyableText(fieldType.ReadableTypeName(), fieldType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)), textColor: ColorType);
+            ImGuiUtils.DrawCopyableText(fieldType.ReadableTypeName(), new()
+            {
+                CopyText = fieldType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
+                TextColor = ColorType
+            });
+
             ImGui.SameLine();
 
             // delegate*
@@ -770,8 +796,22 @@ public unsafe partial class DebugRenderer
                 continue;
             }
 
+            // AgentInterface.AddonId
+            if (Inherits<AgentInterface>(type) && fieldType == typeof(uint) && fieldInfo.Name == nameof(AgentInterface.AddonId))
+            {
+                DrawFieldName(fieldInfo);
+                DrawPointerType(fieldAddress, fieldType, fieldNodeOptions);
+                var unitBase = RaptureAtkUnitManager.Instance()->GetAddonById(*(ushort*)fieldAddress);
+                if (unitBase != null)
+                {
+                    ImGui.SameLine();
+                    _navigationService.DrawAddonLink(unitBase->Id, unitBase->NameString);
+                }
+                continue;
+            }
+
             // AtkUnitBase.AtkValues
-            if (Inherits<AtkUnitBase>(type) && fieldType == typeof(AtkValue*) && fieldInfo.Name == "AtkValues")
+            if (Inherits<AtkUnitBase>(type) && fieldType == typeof(AtkValue*) && fieldInfo.Name == nameof(AtkUnitBase.AtkValues))
             {
                 DrawFieldName(fieldInfo);
                 DrawAtkValues(*(AtkValue**)fieldAddress, ((AtkUnitBase*)address)->AtkValuesCount, fieldNodeOptions);
@@ -779,7 +819,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkUldManager.Assets
-            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldAsset*) && fieldInfo.Name == "Assets")
+            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldAsset*) && fieldInfo.Name == nameof(AtkUldManager.Assets))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkUldAsset>(*(nint**)fieldAddress, ((AtkUldManager*)address)->AssetCount), fieldNodeOptions);
@@ -787,7 +827,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkUldManager.PartsList
-            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldPartsList*) && fieldInfo.Name == "PartsList")
+            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldPartsList*) && fieldInfo.Name == nameof(AtkUldManager.PartsList))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkUldPartsList>(*(nint**)fieldAddress, ((AtkUldManager*)address)->PartsListCount), fieldNodeOptions);
@@ -795,7 +835,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkUldManager.NodeList
-            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == "NodeList")
+            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == nameof(AtkUldManager.NodeList))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<Pointer<AtkResNode>>(*(nint**)fieldAddress, ((AtkUldManager*)address)->NodeListCount), fieldNodeOptions);
@@ -803,7 +843,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkUldManager.Objects
-            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldObjectInfo*) && fieldInfo.Name == "Objects")
+            if (Inherits<AtkUldManager>(type) && fieldType == typeof(AtkUldObjectInfo*) && fieldInfo.Name == nameof(AtkUldManager.Objects))
             {
                 DrawFieldName(fieldInfo);
                 var uldManager = (AtkUldManager*)address;
@@ -829,7 +869,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkUldWidgetInfo.NodeList
-            if (type == typeof(AtkUldWidgetInfo) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == "NodeList")
+            if (type == typeof(AtkUldWidgetInfo) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == nameof(AtkUldWidgetInfo.NodeList))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<Pointer<AtkResNode>>(*(nint**)fieldAddress, ((AtkUldWidgetInfo*)address)->NodeCount), fieldNodeOptions);
@@ -837,7 +877,7 @@ public unsafe partial class DebugRenderer
             }
 
             // DuplicateObjectList.NodeList
-            if (type == typeof(DuplicateObjectList) && fieldType == typeof(AtkComponentNode*) && fieldInfo.Name == "NodeList")
+            if (type == typeof(DuplicateObjectList) && fieldType == typeof(AtkComponentNode*) && fieldInfo.Name == nameof(DuplicateObjectList.NodeList))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkComponentNode>(*(nint**)fieldAddress, (int)((DuplicateObjectList*)address)->NodeCount), fieldNodeOptions);
@@ -845,7 +885,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkTimelineManager.Timelines
-            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimeline*) && fieldInfo.Name == "Timelines")
+            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimeline*) && fieldInfo.Name == nameof(AtkTimelineManager.Timelines))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkTimeline>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->TimelineCount), fieldNodeOptions);
@@ -853,7 +893,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkTimelineManager.Animations
-            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineAnimation*) && fieldInfo.Name == "Animations")
+            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineAnimation*) && fieldInfo.Name == nameof(AtkTimelineManager.Animations))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkTimelineAnimation>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->AnimationCount), fieldNodeOptions);
@@ -861,7 +901,7 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkTimelineManager.LabelSets
-            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineLabelSet*) && fieldInfo.Name == "LabelSets")
+            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineLabelSet*) && fieldInfo.Name == nameof(AtkTimelineManager.LabelSets))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkTimelineLabelSet>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->LabelSetCount), fieldNodeOptions);
@@ -869,32 +909,62 @@ public unsafe partial class DebugRenderer
             }
 
             // AtkTimelineManager.KeyFrames
-            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineKeyFrame*) && fieldInfo.Name == "KeyFrames")
+            if (type == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineKeyFrame*) && fieldInfo.Name == nameof(AtkTimelineManager.KeyFrames))
             {
                 DrawFieldName(fieldInfo);
                 DrawArray(new Span<AtkTimelineKeyFrame>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->KeyFrameCount), fieldNodeOptions);
                 continue;
             }
 
+            // ByteColor.RGBA
+            if (type == typeof(ByteColor) && fieldType == typeof(uint) && fieldInfo.Name == nameof(ByteColor.RGBA))
+            {
+                var color = *(ByteColor*)fieldAddress;
+
+                DrawFieldName(fieldInfo);
+                DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
+
+                ImGui.SameLine();
+                ImGuiUtils.DrawCopyableText($"#{color.RGBA:X8}");
+
+                var abgr = BinaryPrimitives.ReverseEndianness(color.RGBA);
+                var currentTheme = RaptureAtkModule.Instance()->AtkUIColorHolder.ActiveColorThemeType;
+
+                if (_excelService.TryFindRow<RawRow>("UIColor", row => row.ReadUInt32Column(currentTheme) == abgr, out var row))
+                {
+                    ImGui.SameLine();
+                    ImGuiUtils.DrawCopyableText($"UIColor#{row.RowId}");
+                }
+
+                ImGui.SameLine();
+                ImGui.Dummy(new Vector2(ImGui.GetTextLineHeight()));
+                ImGui.GetWindowDrawList().AddRectFilled(
+                    ImGui.GetItemRectMin(),
+                    ImGui.GetItemRectMax(),
+                    color.RGBA,
+                    3);
+                continue;
+            }
+
             // ResourceHandle.FileType
-            if (Inherits<ResourceHandle>(type) && fieldType == typeof(uint) && fieldInfo.Name == "FileType")
+            if (Inherits<ResourceHandle>(type) && fieldType == typeof(uint) && fieldInfo.Name == nameof(ResourceHandle.FileType))
             {
                 DrawFieldName(fieldInfo);
                 DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
                 ImGui.SameLine();
                 var chars = MemoryHelper.ReadString(fieldAddress, 4).ToCharArray();
                 Array.Reverse(chars);
-                ImGuiUtilsEx.DrawCopyableText(new string(chars));
+                ImGuiUtils.DrawCopyableText(new string(chars));
                 continue;
             }
 
             // InventoryItem.CrafterContentId
-            if (Inherits<InventoryItem>(type) && fieldType == typeof(ulong) && fieldInfo.Name == "CrafterContentId")
+            if (Inherits<InventoryItem>(type) && fieldType == typeof(ulong) && fieldInfo.Name == nameof(InventoryItem.CrafterContentId))
             {
                 DrawFieldName(fieldInfo);
                 DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
                 ImGui.SameLine();
-                ImGuiUtilsEx.DrawCopyableText(NameCache.Instance()->GetNameByContentId(*(ulong*)fieldAddress).ToString());
+                ImGuiUtils.DrawCopyableText(NameCache.Instance()->GetNameByContentId(*(ulong*)fieldAddress).ToString());
                 continue;
             }
 
@@ -974,7 +1044,7 @@ public unsafe partial class DebugRenderer
         var fullName = (fieldInfo.DeclaringType != null ? fieldInfo.DeclaringType.FullName + "." : string.Empty) + fieldInfo.Name;
         var hasDoc = HasDocumentation(fullName);
 
-        using (ImRaii.PushColor(ImGuiCol.Text, ImGui.ColorConvertFloat4ToU32((Vector4)ColorFieldName)))
+        using (ColorFieldName.Push(ImGuiCol.Text))
         {
             var startPos = ImGui.GetWindowPos() + ImGui.GetCursorPos() - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY());
 
@@ -1048,7 +1118,7 @@ public unsafe partial class DebugRenderer
                 if ((Convert.ToUInt64(value) & bitValue) != 0)
                 {
                     ImGui.SameLine();
-                    ImGuiUtilsEx.DrawCopyableText(Enum.GetName(type, bitValue)?.ToString() ?? $"{bitValue}", $"{bitValue}");
+                    ImGuiUtils.DrawCopyableText(Enum.GetName(type, bitValue)?.ToString() ?? $"{bitValue}", new() { CopyText = $"{bitValue}" });
                 }
             }
         }
@@ -1066,23 +1136,28 @@ public unsafe partial class DebugRenderer
     {
         if (address == 0)
         {
-            ImGui.Text("");
+            ImGui.Text("null");
             return;
         }
 
-        if (address > _sigScanner.Module.BaseAddress && !ImGui.IsKeyDown(ImGuiKey.LeftShift))
+        if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
         {
-            ImGuiUtilsEx.DrawCopyableText($"+0x{address - _sigScanner.Module.BaseAddress:X}");
+            ImGuiUtils.DrawCopyableText($"0x{address:X}");
             return;
         }
-        else
-        {
-            ImGuiUtilsEx.DrawCopyableText($"0x{address:X}");
-        }
+
+        var addressName = _processInfoService.GetAddressName(address);
+        ImGuiUtils.DrawCopyableText(addressName);
     }
 
     public object? DrawNumeric(nint address, Type type, NodeOptions nodeOptions)
     {
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return 0;
+        }
+
         object? value = null;
 
         switch (type)
@@ -1159,7 +1234,7 @@ public unsafe partial class DebugRenderer
 
         if (type == typeof(Half) || type == typeof(decimal) || type == typeof(double) || type == typeof(float))
         {
-            ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
             return;
         }
 
@@ -1184,18 +1259,18 @@ public unsafe partial class DebugRenderer
 
         if (nodeOptions.IsTimestampField)
         {
-            ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
 
             switch (value)
             {
                 case int intTime when intTime != 0:
                     ImGui.SameLine();
-                    ImGuiUtilsEx.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(intTime).ToLocalTime().ToString());
+                    ImGuiUtils.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(intTime).ToLocalTime().ToString());
                     break;
 
                 case long longTime when longTime != 0:
                     ImGui.SameLine();
-                    ImGuiUtilsEx.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(longTime).ToLocalTime().ToString());
+                    ImGuiUtils.DrawCopyableText(DateTimeOffset.FromUnixTimeSeconds(longTime).ToLocalTime().ToString());
                     break;
             }
 
@@ -1205,19 +1280,19 @@ public unsafe partial class DebugRenderer
         {
             if (ImGui.IsKeyDown(ImGuiKey.LeftShift) || ImGui.IsKeyDown(ImGuiKey.RightShift))
             {
-                ImGuiUtilsEx.DrawCopyableText(ToHexString(value, type));
+                ImGuiUtils.DrawCopyableText(ToHexString(value, type));
             }
             else
             {
-                ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+                ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
             }
 
             return;
         }
 
-        ImGuiUtilsEx.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+        ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
         ImGui.SameLine();
-        ImGuiUtilsEx.DrawCopyableText(ToHexString(value, type));
+        ImGuiUtils.DrawCopyableText(ToHexString(value, type));
     }
 
     private static string ToHexString(object value, Type type)
@@ -1331,6 +1406,58 @@ public unsafe partial class DebugRenderer
             ImGui.SameLine();
     }
 
+    public void DrawTexture(string path, bool sameLine = true, DrawInfo drawInfo = default, bool canCopy = true, bool noTooltip = false)
+    {
+        drawInfo.DrawSize ??= new Vector2(ImGui.GetTextLineHeight());
+
+        if (string.IsNullOrEmpty(path))
+        {
+            ImGui.Dummy(drawInfo.DrawSize.Value);
+            if (sameLine)
+                ImGui.SameLine();
+            return;
+        }
+
+        if (!ImGui.IsRectVisible(drawInfo.DrawSize.Value))
+        {
+            ImGui.Dummy(drawInfo.DrawSize.Value);
+            if (sameLine)
+                ImGui.SameLine();
+            return;
+        }
+
+        if (_textureProvider.GetFromGame(path).TryGetWrap(out var texture, out _))
+        {
+            ImGui.Image(texture.Handle, drawInfo.DrawSize.Value);
+
+            if (ImGui.IsItemHovered())
+            {
+                if (canCopy)
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+
+                if (!noTooltip)
+                {
+                    ImGui.BeginTooltip();
+                    if (canCopy)
+                        ImGui.Text("Click to copy IconId"u8);
+                    ImGui.Text($"Path: {path} – Size: {texture.Width}x{texture.Height}");
+                    ImGui.Image(texture.Handle, new(texture.Width, texture.Height));
+                    ImGui.EndTooltip();
+                }
+            }
+
+            if (canCopy && ImGui.IsItemClicked())
+                ImGui.SetClipboardText(path.ToString());
+        }
+        else
+        {
+            ImGui.Dummy(drawInfo.DrawSize.Value);
+        }
+
+        if (sameLine)
+            ImGui.SameLine();
+    }
+
     public void DrawArray<T>(Span<T> span, NodeOptions nodeOptions) where T : unmanaged
     {
         if (span.Length == 0)
@@ -1366,5 +1493,20 @@ public unsafe partial class DebugRenderer
             var ptr = span.GetPointer(i);
             DrawPointerType(ptr, type, nodeOptions);
         }
+    }
+
+    public void HighlightNode(AtkResNode* node)
+    {
+        if (!_processInfoService.IsPointerValid(node))
+            return;
+
+        var scale = 1f;
+        var addon = RaptureAtkUnitManager.Instance()->AtkUnitManager.GetAddonByNodeSafe(node);
+        if (_processInfoService.IsPointerValid(addon))
+            scale *= addon->Scale;
+
+        var pos = new Vector2(node->ScreenX, node->ScreenY);
+        var size = new Vector2(node->Width, node->Height) * scale;
+        ImGui.GetForegroundDrawList().AddRect(pos, pos + size, Color.Gold.ToUInt());
     }
 }

@@ -1,6 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using HaselDebug.Config;
 using HaselDebug.Utils;
 
@@ -14,9 +12,18 @@ public partial class PinnedInstancesService : IReadOnlyCollection<PinnedInstance
     private readonly InstancesService _instancesService;
     private readonly List<PinnedInstanceTab> _tabs = [];
 
+    public event Action? Loaded;
+
     [AutoPostConstruct]
     public void Initialize()
     {
+        _instancesService.Loaded += OnInstancesLoaded;
+    }
+
+    private void OnInstancesLoaded()
+    {
+        _instancesService.Loaded -= OnInstancesLoaded;
+
         // make sure the types of pinned instances exist
         _pluginConfig.PinnedInstances = _pluginConfig.PinnedInstances
             .Where(name => _instancesService.Instances.Any(inst => inst.Type.FullName == name))
@@ -26,11 +33,13 @@ public partial class PinnedInstancesService : IReadOnlyCollection<PinnedInstance
         foreach (var name in _pluginConfig.PinnedInstances)
         {
             var inst = _instancesService.Instances.FirstOrDefault(inst => inst.Type.FullName == name);
-            if (inst == null) continue;
+            if (inst == default) continue;
             _tabs.Add(new PinnedInstanceTab(_debugRenderer, inst.Address, inst.Type));
         }
 
         Sort();
+
+        Loaded?.Invoke();
     }
 
     private void Sort()

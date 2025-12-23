@@ -1,21 +1,13 @@
-using System.Collections.Generic;
-using System.Numerics;
 using System.Text;
 using Dalamud.Game.Text.Noun.Enums;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.ImGuiSeStringRenderer;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using HaselCommon.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
 using Lumina.Data;
-using Lumina.Excel.Sheets;
 using Lumina.Text.Expressions;
-using Lumina.Text.Payloads;
-using Lumina.Text.ReadOnly;
 
 namespace HaselDebug.Services;
 
@@ -86,14 +78,17 @@ public unsafe partial class DebugRenderer
         { LinkMacroPayloadType.Character, ["Flags", "WorldId"] },
         { LinkMacroPayloadType.Item, ["ItemId", "Rarity"] },
         { LinkMacroPayloadType.MapPosition, ["TerritoryType/MapId", "RawX", "RawY"] },
-        { LinkMacroPayloadType.Quest, ["QuestId"] },
-        { LinkMacroPayloadType.Achievement, ["AchievementId"] },
-        { LinkMacroPayloadType.HowTo, ["HowToId"] },
+        { LinkMacroPayloadType.Quest, ["RowId"] },
+        { LinkMacroPayloadType.Achievement, ["RowId"] },
+        { LinkMacroPayloadType.HowTo, ["RowId"] },
         // PartyFinderNotification
         { LinkMacroPayloadType.Status, ["StatusId"] },
         { LinkMacroPayloadType.PartyFinder, ["ListingId", string.Empty, "WorldId"] },
-        { LinkMacroPayloadType.AkatsukiNote, ["AkatsukiNoteId"] },
-        { DalamudLinkType, ["CommandId", "Extra1", "Extra2", "ExtraString"] }
+        { LinkMacroPayloadType.AkatsukiNote, ["RowId"] },
+        { LinkMacroPayloadType.Description, ["RowId"] },
+        { LinkMacroPayloadType.WKSPioneeringTrail, ["RowId", "SubrowId"] },
+        { LinkMacroPayloadType.MKDLore, ["RowId"] },
+        { DalamudLinkType, ["CommandId", "Extra1", "Extra2", "ExtraString"] },
     };
 
     private readonly Dictionary<uint, string[]> _fixedExpressionNames = new()
@@ -120,15 +115,15 @@ public unsafe partial class DebugRenderer
             return;
         }
 
-        nodeOptions = nodeOptions.WithAddress(address);
-
-        var str = (Utf8String*)address;
-        if (str->StringPtr == null)
+        if (!_processInfoService.IsPointerValid(address))
         {
-            ImGui.Text("null"u8);
+            ImGui.Text("invalid"u8);
             return;
         }
 
+        nodeOptions = nodeOptions.WithAddress(address);
+
+        var str = (Utf8String*)address;
         DrawSeString(str->StringPtr, nodeOptions);
     }
 
@@ -137,6 +132,12 @@ public unsafe partial class DebugRenderer
         if (ptr == null)
         {
             ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(ptr))
+        {
+            ImGui.Text("invalid"u8);
             return;
         }
 
@@ -259,7 +260,7 @@ public unsafe partial class DebugRenderer
             ImGui.Text(payload.Type == ReadOnlySePayloadType.Text ? "Text" : "ToString()");
             ImGui.TableNextColumn();
             var text = payload.ToString();
-            ImGuiUtilsEx.DrawCopyableText($"\"{text}\"", text);
+            ImGuiUtils.DrawCopyableText($"\"{text}\"", new() { CopyText = text });
 
             if (payload.Type != ReadOnlySePayloadType.Macro)
                 continue;
@@ -317,9 +318,9 @@ public unsafe partial class DebugRenderer
                 ImGui.SameLine();
             }
 
-            ImGuiUtilsEx.DrawCopyableText(u32.ToString());
+            ImGuiUtils.DrawCopyableText(u32.ToString());
             ImGui.SameLine();
-            ImGuiUtilsEx.DrawCopyableText($"0x{u32:X}");
+            ImGuiUtils.DrawCopyableText($"0x{u32:X}");
 
             if (macroCode == MacroCode.Link && idx == 0)
             {

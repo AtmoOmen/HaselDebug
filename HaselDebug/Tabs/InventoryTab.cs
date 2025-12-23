@@ -1,19 +1,12 @@
-using System.Numerics;
 using Dalamud.Game.Text;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Game.WKS;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
-using Lumina.Text;
-using ItemUtil = Dalamud.Utility.ItemUtil;
 
 namespace HaselDebug.Tabs;
 
@@ -86,8 +79,8 @@ public unsafe partial class InventoryTab : DebugTab
             {
                 var container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
 
-                builder.AddCopyName(_textService, inventoryType.ToString());
-                builder.AddCopyAddress(_textService, (nint)container);
+                builder.AddCopyName(inventoryType.ToString());
+                builder.AddCopyAddress((nint)container);
             });
 
             ImGui.TableNextColumn(); // Size
@@ -143,7 +136,7 @@ public unsafe partial class InventoryTab : DebugTab
                     .PopColorType()
                     .ToReadOnlySeString();
 
-                _debugRenderer.DrawIcon(_itemService.GetIconId(itemId), ItemUtil.IsHighQuality(itemId));
+                _debugRenderer.DrawIcon(_itemService.GetItemIcon(itemId), ItemUtil.IsHighQuality(itemId));
                 _debugRenderer.DrawPointerType(slot, inventoryType is InventoryType.Cosmopouch1 or InventoryType.Cosmopouch2 ? typeof(WKSContentInventoryItem) : typeof(InventoryItem), new NodeOptions()
                 {
                     AddressPath = new AddressPath([(nint)inventoryType, slot->Slot]),

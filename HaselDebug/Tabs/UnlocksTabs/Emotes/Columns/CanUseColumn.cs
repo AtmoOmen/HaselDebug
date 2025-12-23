@@ -1,11 +1,10 @@
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Emotes.Columns;
 
 [RegisterTransient]
-public class CanUseColumn : ColumnBool<Emote>
+public class CanUseColumn : ColumnYesNo<Emote>
 {
     public CanUseColumn()
     {

@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Dalamud.Game;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -153,14 +149,14 @@ public unsafe partial class AddonFactoriesTab : DebugTab
             ImGui.TableNextColumn(); // Inheritance
             if (entry.InheritanceVtableAddress == _atkUnitBaseVtableAddress)
             {
-                ImGuiUtilsEx.DrawCopyableText("AtkUnitBase");
+                ImGuiUtils.DrawCopyableText("AtkUnitBase");
             }
             else
             {
                 var inheritanceEntry = entry.InheritanceVtableAddress != 0 ? _cache.FirstOrDefault(e => e.VTableAddress == entry.InheritanceVtableAddress) : null;
                 if (inheritanceEntry != null)
                 {
-                    ImGuiUtilsEx.DrawCopyableText(inheritanceEntry.Name);
+                    ImGuiUtils.DrawCopyableText(inheritanceEntry.Name);
                 }
                 else
                 {
@@ -379,17 +375,5 @@ public unsafe partial class AddonFactoriesTab : DebugTab
         }
 
         return addr;
-    }
-}
-
-public sealed class NativeCodeReader(nint address) : CodeReader
-{
-    private int _position;
-
-    public bool CanReadByte => _position < 1024; // TODO?
-
-    public override unsafe int ReadByte()
-    {
-        return ((byte*)address)[_position++];
     }
 }

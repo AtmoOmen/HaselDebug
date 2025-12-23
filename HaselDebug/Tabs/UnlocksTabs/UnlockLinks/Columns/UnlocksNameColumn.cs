@@ -1,4 +1,3 @@
-using System.Linq;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Services;
 using HaselDebug.Utils;
@@ -9,6 +8,7 @@ namespace HaselDebug.Tabs.UnlocksTabs.UnlockLinks.Columns;
 public partial class UnlocksNameColumn : ColumnString<UnlockLinkEntry>
 {
     private readonly DebugRenderer _debugRenderer;
+    private readonly ITextureProvider _textureProvider;
     private readonly UnlocksTabUtils _unlocksTabUtils;
 
     public override string ToName(UnlockLinkEntry entry)
@@ -26,18 +26,41 @@ public partial class UnlocksNameColumn : ColumnString<UnlockLinkEntry>
 
                 default:
                     ImGui.BeginGroup();
-                    _debugRenderer.DrawIcon(unlock.IconId, noTooltip: true);
-                    ImGuiUtilsEx.DrawCopyableText(unlock.Label, noTooltip: true);
+
+                    if (unlock.IconId != 0)
+                    {
+                        _debugRenderer.DrawIcon(unlock.IconId, noTooltip: true);
+                    }
+                    else if (!string.IsNullOrEmpty(unlock.TexturePath))
+                    {
+                        _debugRenderer.DrawTexture(unlock.TexturePath, drawInfo: unlock.DrawInfo, noTooltip: true);
+                    }
+
+                    ImGuiUtils.DrawCopyableText(unlock.Label, new() { NoTooltip = true });
+
                     ImGui.EndGroup();
 
                     if (ImGui.IsItemHovered())
                     {
-                        _unlocksTabUtils.DrawTooltip(
-                            unlock.IconId,
-                            unlock.Label,
-                            !string.IsNullOrEmpty(unlock.Category)
-                                ? unlock.Category
-                                : unlock.RowType.Name);
+                        if (unlock.IconId != 0)
+                        {
+                            _unlocksTabUtils.DrawTooltip(
+                                unlock.IconId,
+                                unlock.Label,
+                                !string.IsNullOrEmpty(unlock.Category)
+                                    ? unlock.Category
+                                    : unlock.RowType.Name);
+                        }
+                        else if (!string.IsNullOrEmpty(unlock.TexturePath))
+                        {
+                            _unlocksTabUtils.DrawTooltip(
+                                unlock.TexturePath,
+                                unlock.DrawInfo,
+                                unlock.Label,
+                                !string.IsNullOrEmpty(unlock.Category)
+                                    ? unlock.Category
+                                    : unlock.RowType.Name);
+                        }
                     }
 
                     break;

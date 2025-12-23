@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Numerics;
-using Dalamud.Interface.Utility.Raii;
+using Dalamud.Interface.Textures;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
 
 namespace HaselDebug.Utils;
 
@@ -123,7 +119,7 @@ public static unsafe class ImGuiUtilsEx
 
         if (texType == TextureType.Resource)
         {
-            DrawCopyableText(textureInfo->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString());
+            ImGuiUtils.DrawCopyableText(textureInfo->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString());
 
             /* explodes
             if (textureInfo->AtkTexture.Resource->IconId != 0)
@@ -176,7 +172,7 @@ public static unsafe class ImGuiUtilsEx
         ImGuiUtils.SameLineSpace();
         if (copy)
         {
-            DrawCopyableText(value);
+            ImGuiUtils.DrawCopyableText(value);
         }
         else
         {
@@ -214,50 +210,48 @@ public static unsafe class ImGuiUtilsEx
         }
     }
 
-    public static void DrawCopyableText(string text, string? textCopy = null, string? tooltipText = null, bool asSelectable = false, Color? textColor = null, string? highligtedText = null, bool noTooltip = false)
+    public static EndUnconditionally AlertBox(string id, Color color, Vector2 size)
     {
-        textCopy ??= text;
+        var colors = ImRaii
+            .PushColor(ImGuiCol.ChildBg, (color with { A = 0.1f }).ToUInt())
+            .Push(ImGuiCol.Border, (color with { A = 0.4f }).ToUInt());
+        var style = ImRaii.PushStyle(ImGuiStyleVar.ChildRounding, 3);
+        var child = ImRaii.Child(id, size, true, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        style.Dispose();
+        colors.Dispose();
+        return new EndUnconditionally(child.Dispose, true);
+    }
 
-        using var color = textColor?.Push(ImGuiCol.Text);
+    private static void DrawAlert(string id, string text, GameIconLookup icon, Color color)
+    {
+        var maxWidth = ImGui.GetContentRegionAvail().X;
+        var innerTextWidth = maxWidth - ImGui.GetStyle().FramePadding.X * 2 - ImGui.GetStyle().ItemInnerSpacing.X * 2 - ImGui.GetTextLineHeight();
+        var textSize = ImGui.CalcTextSize(text, wrapWidth: innerTextWidth);
+        var size = new Vector2(maxWidth, textSize.Y + ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetStyle().ItemInnerSpacing.Y * 2);
 
-        if (asSelectable)
+        using (AlertBox(id, color, size))
         {
-            ImGui.Selectable(text);
-        }
-        else if (!string.IsNullOrEmpty(highligtedText))
-        {
-            var pos = text.IndexOf(highligtedText, StringComparison.InvariantCultureIgnoreCase);
-            if (pos != -1)
-            {
-                ImGui.Text(text[..pos]);
-                ImGui.SameLine(0, 0);
-
-                using (Color.Yellow.Push(ImGuiCol.Text))
-                    ImGui.Text(text[pos..(pos + highligtedText.Length)]);
-
-                ImGui.SameLine(0, 0);
-                ImGui.Text(text[(pos + highligtedText.Length)..]);
-            }
+            if (ServiceLocator.TryGetService<ITextureProvider>(out var textureProvider))
+                textureProvider.DrawIcon(icon, ImGui.GetTextLineHeight());
             else
-            {
-                ImGui.Text(text);
-            }
+                ImGui.Dummy(new Vector2(ImGui.GetTextLineHeight()));
+            ImGui.SameLine();
+            ImGui.TextWrapped(text);
         }
-        else
-        {
-            ImGui.Text(text);
-        }
+    }
 
-        color?.Pop();
+    public static void DrawAlertInfo(string id, string text)
+    {
+        DrawAlert(id, text, 60071, Color.FromHSL(190, 1f, 0.5f));
+    }
 
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-            if (!noTooltip)
-                ImGui.SetTooltip(tooltipText ?? textCopy);
-        }
+    public static void DrawAlertWarning(string id, string text)
+    {
+        DrawAlert(id, text, 60073, Color.FromHSL(50, 1f, 0.5f));
+    }
 
-        if (ImGui.IsItemClicked())
-            ImGui.SetClipboardText(textCopy);
+    public static void DrawAlertError(string id, string text)
+    {
+        DrawAlert(id, text, 60074, Color.FromHSL(0, 1f, 0.5f));
     }
 }

@@ -1,4 +1,3 @@
-using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -19,7 +18,7 @@ public unsafe class EmotesTab(EmotesTable table) : DebugTab, IUnlockTab
         return new UnlockProgress()
         {
             TotalUnlocks = table.Rows.Count,
-            NumUnlocked = table.Rows.Count(row => row.UnlockLink == 0 || UIState.Instance()->IsUnlockLinkUnlocked((ushort)row.UnlockLink)),
+            NumUnlocked = table.Rows.Count(row => row.UnlockLink == 0 || UIState.Instance()->IsUnlockLinkUnlockedOrQuestCompleted(row.UnlockLink)),
         };
     }
 

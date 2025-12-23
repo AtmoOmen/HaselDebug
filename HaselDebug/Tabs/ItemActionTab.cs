@@ -1,42 +1,49 @@
 using System.Collections.Immutable;
-using System.Linq;
-using Dalamud.Interface.Utility.Raii;
+using System.Threading.Tasks;
 using HaselCommon.Game.Enums;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs;
 
 [RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class ItemActionTypeTab : DebugTab
+public unsafe partial class ItemActionTab : DebugTab
 {
     private readonly ExcelService _excelService;
     private readonly DebugRenderer _debugRenderer;
 
-    private ImmutableSortedDictionary<ushort, Item[]> _dict;
-    private bool _isInitialized;
+    private ImmutableSortedDictionary<uint, ItemHandle[]> _dict;
+    private Task? _loadTask;
 
-    private void Initialize()
+    public override string Title => "Item Actions";
+
+    private void LoadData()
     {
         _dict = _excelService.GetSheet<ItemAction>()
-            .GroupBy(row => row.Type)
+            .GroupBy(row => row.Action.RowId)
             .ToDictionary(
                 g => g.Key,
-                g => _excelService.FindRows<Item>(item => g.Any(itemAction => itemAction.RowId == item.ItemAction.RowId))
+                g => _excelService.FindRows<Item>(item => g.Any(itemAction => itemAction.RowId == item.ItemAction.RowId)).Select(row => (ItemHandle)row).ToArray()
             )
             .ToImmutableSortedDictionary();
     }
 
     public override void Draw()
     {
-        if (!_isInitialized)
+        _loadTask ??= Task.Run(LoadData);
+
+        if (!_loadTask.IsCompleted)
         {
-            Initialize();
-            _isInitialized = true;
+            ImGui.Text("Loading...");
+            return;
+        }
+
+        if (_loadTask.IsFaulted)
+        {
+            ImGuiUtilsEx.DrawAlertError("TaskError", _loadTask.Exception?.ToString() ?? "Error loading data :(");
+            return;
         }
 
         foreach (var (type, items) in _dict)
@@ -46,10 +53,10 @@ public unsafe partial class ItemActionTypeTab : DebugTab
 
             foreach (var item in items)
             {
-                _debugRenderer.DrawExdRow(typeof(Item), item.RowId, 0, new NodeOptions()
+                _debugRenderer.DrawExdRow(typeof(Item), item.ItemId, 0, new NodeOptions()
                 {
                     AddressPath = new AddressPath([(nint)type]),
-                    Title = $"[Item#{item.RowId}] {item.Name.ToString()}"
+                    Title = $"[Item#{item.ItemId}] {item.Name}"
                 });
             }
         }

@@ -1,13 +1,10 @@
-using System.Linq;
-using System.Numerics;
-using Dalamud.Interface.Utility;
-using Dalamud.Plugin.Services;
-using HaselCommon.Gui;
+using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselCommon.Gui.ImGuiTable;
-using HaselCommon.Services;
-using HaselDebug.Sheets;
+using HaselCommon.Sheets;
 using HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits;
 
@@ -18,9 +15,10 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ExcelService _excelService;
-    private readonly ItemService _itemService;
     private readonly SetColumn _setColumn;
     private readonly ItemsColumn _itemsColumn;
+    private readonly IClientState _clientState;
+    private readonly ItemService _itemService;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -32,6 +30,21 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
         ];
 
         Flags |= ImGuiTableFlags.SortTristate;
+
+        _clientState.Login += OnLogin;
+    }
+
+    public override void Dispose()
+    {
+        _clientState.Login -= OnLogin;
+        base.Dispose();
+    }
+
+    private void OnLogin()
+    {
+        Rows.Clear();
+        RowsLoaded = false;
+        IsFilterDirty = true;
     }
 
     public override float CalculateLineHeight()
@@ -39,8 +52,9 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
         return IconSize * ImGuiHelpers.GlobalScaleSafe + ImGui.GetStyle().ItemSpacing.Y; // I honestly don't know why using ItemSpacing here works
     }
 
-    public override void LoadRows()
+    public override unsafe void LoadRows()
     {
+        var agent = AgentTryon.Instance();
         var cabinetSheet = _excelService.GetSheet<Cabinet>().Select(row => row.Item.RowId).ToArray();
         foreach (var row in _excelService.GetSheet<CustomMirageStoreSetItem>())
         {
@@ -78,5 +92,62 @@ public partial class OutfitsTable : Table<CustomMirageStoreSetItem>, IDisposable
             var pos = ImGui.GetWindowPos() + ImGui.GetCursorPos() - new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY()) + ImGuiHelpers.ScaledVector2(IconSize / 2.5f + 4);
             ImGui.GetWindowDrawList().AddImage(tex.Handle, pos, pos + ImGuiHelpers.ScaledVector2(IconSize) / 1.5f, new Vector2(0.6818182f, 0.21538462f), new Vector2(1, 0.4f));
         }
+    }
+
+    public static unsafe bool TryGetSetItemBitArray(CustomMirageStoreSetItem row, out BitArray bitArray)
+    {
+        var mirageManager = MirageManager.Instance();
+        if (mirageManager->PrismBoxLoaded)
+        {
+            var prismBoxItemIndex = mirageManager->PrismBoxItemIds.IndexOf(row.RowId);
+            if (prismBoxItemIndex == -1)
+            {
+                bitArray = default;
+                return false;
+            }
+            bitArray = new BitArray(mirageManager->PrismBoxStain0Ids.GetPointer(prismBoxItemIndex), row.Items.Count);
+            return true;
+        }
+
+        var itemFinderModule = ItemFinderModule.Instance();
+        var glamourDresserIndex = itemFinderModule->GlamourDresserItemIds.IndexOf(row.RowId);
+        if (glamourDresserIndex == -1)
+        {
+            bitArray = default;
+            return false;
+        }
+        bitArray = new BitArray((byte*)itemFinderModule->GlamourDresserItemSetUnlockBits.GetPointer(glamourDresserIndex), row.Items.Count);
+        return true;
+    }
+
+    public static unsafe bool IsItemInDresser(ItemHandle item)
+    {
+        var mirageManager = MirageManager.Instance();
+        var items = mirageManager->PrismBoxLoaded
+            ? mirageManager->PrismBoxItemIds
+            : ItemFinderModule.Instance()->GlamourDresserItemIds;
+        return items.Contains(item.BaseItemId) || items.Contains(item.BaseItemId + (uint)ItemKind.Hq);
+    }
+
+    public static unsafe bool IsItemInInventory(ItemHandle item)
+    {
+        var isItemInInventory = false;
+        for (var invIdx = 0; invIdx < 4; invIdx++)
+        {
+            var container = InventoryManager.Instance()->GetInventoryContainer((InventoryType)invIdx);
+            for (var slotIdx = 0; slotIdx < container->GetSize(); slotIdx++)
+            {
+                var slot = container->GetInventorySlot(slotIdx);
+
+                isItemInInventory |= slot->GetBaseItemId() == item.BaseItemId;
+
+                if (isItemInInventory)
+                    break;
+            }
+
+            if (isItemInInventory)
+                break;
+        }
+        return isItemInInventory;
     }
 }

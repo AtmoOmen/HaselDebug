@@ -1,6 +1,4 @@
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.STD;
-using HaselCommon.Services;
 using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
@@ -11,6 +9,18 @@ public unsafe partial class DebugRenderer
 {
     public void DrawStdLinkedList(nint address, Type valueType, NodeOptions nodeOptions)
     {
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
         if (*(nint*)address == 0)
         {
             ImGui.Text("Not initialized"u8);
@@ -30,7 +40,7 @@ public unsafe partial class DebugRenderer
         {
             DrawContextMenu = (nodeOptions, builder) =>
             {
-                builder.AddCopyAddress(_textService, address);
+                builder.AddCopyAddress(address);
                 builder.AddSeparator();
                 builder.Add(new ImGuiContextMenuEntry()
                 {

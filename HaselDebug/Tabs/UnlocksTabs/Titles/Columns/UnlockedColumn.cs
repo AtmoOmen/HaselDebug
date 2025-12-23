@@ -1,11 +1,10 @@
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselCommon.Gui.ImGuiTable;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Titles.Columns;
 
 [RegisterTransient]
-public class UnlockedColumn : ColumnBool<Title>
+public class UnlockedColumn : ColumnYesNo<Title>
 {
     public UnlockedColumn()
     {

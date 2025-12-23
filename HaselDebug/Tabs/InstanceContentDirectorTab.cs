@@ -1,14 +1,9 @@
-using System.Collections.Generic;
-using Dalamud.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using Lumina.Excel.Sheets;
-using Lumina.Text.ReadOnly;
 using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
 using InstanceContentType = FFXIVClientStructs.FFXIV.Client.Game.InstanceContent.InstanceContentType;
 
@@ -29,7 +24,7 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
         {
             foreach (var ((name, type), vtableAddr) in InstanceContentTypeVtables)
             {
-                ImGuiUtilsEx.DrawCopyableText($"{type}: {name} @", $"+0x{vtableAddr - _sigScanner.Module.BaseAddress:X} - {name}");
+                ImGuiUtils.DrawCopyableText($"{type}: {name} @", new() { CopyText = $"+0x{vtableAddr - _sigScanner.Module.BaseAddress:X} - {name}" });
                 ImGui.SameLine();
                 _debugRenderer.DrawAddress(vtableAddr);
             }
@@ -64,7 +59,7 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
 
         ImGui.Text("CraftLeveEventHandler:"u8);
         ImGui.SameLine();
-        var craftLeveEventHandler = EventFramework.Instance()->EventHandlerModule.CraftLeveEventHandler;
+        var craftLeveEventHandler = EventFramework.Instance()->EventHandlerModule.CraftLeveClientEventHandler;
         if (craftLeveEventHandler == null)
         {
             ImGui.Text("None active"u8);
@@ -101,7 +96,7 @@ public unsafe partial class InstanceContentDirectorTab : DebugTab
         {
             var ic = _excelService.GetSheet<InstanceContent>().GetRow(instanceContentDirector->ContentDirector.Director.ContentId);
             var cfc = _excelService.GetSheet<ContentFinderCondition>(ClientLanguage.English).GetRow(ic.ContentFinderCondition.RowId);
-            var key = (!cfc.Name.IsEmpty ? cfc.Name : instanceContentDirector->ContentDirector.Director.UnkString0.ToString(), instanceContentDirector->InstanceContentType);
+            var key = (!cfc.Name.IsEmpty ? cfc.Name : $"{nameof(ContentFinderCondition)}#{cfc.RowId}", instanceContentDirector->InstanceContentType);
             if (!InstanceContentTypeVtables.ContainsKey(key))
             {
                 InstanceContentTypeVtables.Add(key, *(nint*)instanceContentDirector);

@@ -1,5 +1,3 @@
-using System.Numerics;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Kernel;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Utils;
@@ -11,6 +9,18 @@ public unsafe partial class DebugRenderer
 {
     public void DrawAtkTexture(nint address, NodeOptions nodeOptions)
     {
+        if (address == 0)
+        {
+            ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
+            return;
+        }
+
         var tex = (AtkTexture*)address;
         if (!tex->IsTextureReady())
         {
@@ -37,6 +47,12 @@ public unsafe partial class DebugRenderer
         if (address == 0)
         {
             ImGui.Text("null"u8);
+            return;
+        }
+
+        if (!_processInfoService.IsPointerValid(address))
+        {
+            ImGui.Text("invalid"u8);
             return;
         }
 

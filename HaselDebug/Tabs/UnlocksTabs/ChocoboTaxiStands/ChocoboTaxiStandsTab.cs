@@ -1,4 +1,3 @@
-using System.Linq;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -6,7 +5,7 @@ using HaselDebug.Interfaces;
 namespace HaselDebug.Tabs.UnlocksTabs.ChocoboTaxiStands;
 
 [RegisterSingleton<IUnlockTab>(Duplicate = DuplicateStrategy.Append)]
-public unsafe class ChocoboTaxiStandsTab(AdventuresTable table) : DebugTab, IUnlockTab
+public unsafe class ChocoboTaxiStandsTab(ChocoboTaxiStandsTable table) : DebugTab, IUnlockTab
 {
     public override string Title => "Chocobo Taxi Stands";
     public override bool DrawInChild => false;
@@ -19,7 +18,7 @@ public unsafe class ChocoboTaxiStandsTab(AdventuresTable table) : DebugTab, IUnl
         return new UnlockProgress()
         {
             TotalUnlocks = table.Rows.Count,
-            NumUnlocked = table.Rows.Count(row => UIState.Instance()->IsChocoboTaxiStandUnlocked(row.RowId - 1179648)),
+            NumUnlocked = table.Rows.Count(row => UIState.Instance()->IsChocoboTaxiStandUnlocked(row.RowId)),
         };
     }
 

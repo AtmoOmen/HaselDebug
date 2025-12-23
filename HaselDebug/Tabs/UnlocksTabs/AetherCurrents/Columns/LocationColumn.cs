@@ -1,10 +1,6 @@
 using System.Globalization;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
 using HaselCommon.Gui.ImGuiTable;
-using HaselCommon.Services;
 using HaselDebug.Services;
-using Lumina.Excel.Sheets;
 
 namespace HaselDebug.Tabs.UnlocksTabs.AetherCurrents.Columns;
 
@@ -136,7 +132,7 @@ public partial class LocationColumn : ColumnString<AetherCurrentEntry>
         }
         else
         {
-            if (!_excelService.TryFindRow<EObj>(row => row.Data == aetherCurrent.RowId, out eobj))
+            if (!_excelService.TryFindRow<EObj>(row => row.Data.RowId == aetherCurrent.RowId, out eobj))
                 return false;
 
             _table.AetherCurrentEObjCache.Add(aetherCurrent.RowId, eobj.RowId);

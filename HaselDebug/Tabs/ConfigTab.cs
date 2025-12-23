@@ -1,13 +1,9 @@
-using System.Collections.Generic;
 using System.Text;
-using Dalamud.Interface.Utility.Raii;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Common.Configuration;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
-using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs;
 
@@ -123,9 +119,9 @@ public unsafe partial class ConfigTab : DebugTab
 
             ImGui.TableNextColumn(); // Index
             if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
-                ImGuiUtilsEx.DrawCopyableText(((nint)option).ToString("X"));
+                ImGuiUtils.DrawCopyableText(((nint)option).ToString("X"));
             else
-                ImGuiUtilsEx.DrawCopyableText(option->Index.ToString());
+                ImGuiUtils.DrawCopyableText(option->Index.ToString());
 
             ImGui.TableNextColumn(); // Type
             switch (option->Type)
@@ -155,7 +151,11 @@ public unsafe partial class ConfigTab : DebugTab
             }
 
             ImGui.TableNextColumn(); // Name
-            ImGuiUtilsEx.DrawCopyableText(optionName, highligtedText: hasSearchTerm ? _searchTerm : null);
+            ImGuiUtils.DrawCopyableText(optionName, new()
+            {
+                TextColor = option->Type == 1 ? DebugRenderer.ColorTreeNode : null,
+                HighlightedText = hasSearchTerm ? _searchTerm : null
+            });
 
             switch (option->Type)
             {
@@ -193,7 +193,7 @@ public unsafe partial class ConfigTab : DebugTab
 
                 case 4: // String
                     ImGui.TableNextColumn(); // Value
-                    ImGuiUtilsEx.DrawCopyableText(option->Properties.String.DefaultValue->ToString());
+                    ImGuiUtils.DrawCopyableText(option->Properties.String.DefaultValue->ToString());
 
                     ImGui.TableNextColumn(); // Default
                     ImGui.TableNextColumn(); // Min

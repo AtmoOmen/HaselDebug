@@ -1,10 +1,161 @@
 # Changelog
 
-## [Unreleased]
+## [1.42.4] (2025-12-20)
 
-- **Added:** Unlock tabs "Chocobo Taxi Stands" and "HowTos".
+- **Fixed:** The Outfits tab now pulls data directly from MirageManager instead of the ItemFinderModule when it's loaded, because the data in ItemFinderModule is out of date when you're not actively running item searches.
+- **Fixed:** The Restore Item context menu entry when right-clicking an item in the Outfits tab no longer has a checkmark next to it. (Note: Restoring might still fail. Maybe there is also some internal countdown. Just retry.)
+
+## [1.42.3] (2025-12-20)
+
+I don't know what I've been thinking.
+
+- **Updated:** The items in the Outfits tab now have better indicators:
+  - Green = Item collected in partial set (Outfit Glamour-ready Item)
+  - Yellow = Item in Inventory
+  - Orange = Item in Glamour Dresser
+
+## [1.42.2] (2025-12-20)
+
+- **Updated:** The items in the Outfits tab now have better indicators:
+  - Yellow = Item collected in partial set (Outfit Glamour-ready Item)
+  - Orange = Item in glamour dresser or inventory
+- **Updated:** ClientStructs now at [f27d2f6f](https://github.com/aers/FFXIVClientStructs/tree/f27d2f6f) ([compare](https://github.com/aers/FFXIVClientStructs/compare/9653cf4f..f27d2f6f)).
+
+## [1.42.1] (2025-12-19)
+
+Update for 7.4hf1.
+
+- **Updated:** The Unknown0 and Unknown1 columns in the UIColor tab were renamed to Clear White and Clear Green.
+- **Updated:** ClientStructs now at [9653cf4f](https://github.com/aers/FFXIVClientStructs/tree/9653cf4f) ([compare](https://github.com/aers/FFXIVClientStructs/compare/82de587a..9653cf4f)).
+
+## [1.42.0] (2025-12-19)
+
+Update for 7.4. You're welcome.
+
+- **Added:** A new Pointer Inspector tab. (Thanks to @MidoriKami and me!)  
+  This tool tries to find pointers with vtables that are known in the data.yml. It doesn't update the list every frame, just when hitting enter on the address/size. The size is automatically detected when the pointer points to memory with a vtable that has a dtor at vf0.
+- **Changed:** Clicking on an offset now copies the offset, as intended. Hold shift to copy the address. Sorry about your muscle memory.
+- **Updated:** Some small Lua Debug tab improvements.
+  - More colors.
+  - `__index` displays the tables `className` when available.
+  - Native functions now print the address of the function.
+- **Updated:** The Outfits tab now supports partial outfits.
+- **Updated:** The categories in the Config tab are now drawn in yellow for easier distinction.
+- **Updated:** Replaced the on-the-spot pointer validation with a periodic (every second) comitted memory section scan and a range check.
+- **Updated:** Filtered out ExcelPage and RowOffset properties from all Excel displays.
+- **Updated:** Support for AddonLifecycle vtable replacements in Dalamud v14. The original vtable is now resolved.
+- **Fixed:** The addons listed in the Addon Names tab no longer open when clicked. This was leftover testing code. It now only copies the name when clicking on them. Sorry about that.
+- **Updated:** ClientStructs now at [82de587a](https://github.com/aers/FFXIVClientStructs/tree/82de587a) ([compare](https://github.com/aers/FFXIVClientStructs/compare/6f339d8f..82de587a)).
+
+
+## [1.41.0] (2025-12-06)
+
+- **Added:** Addon Inspector now shows field names or possible field offsets for nodes in cyan.
+- **Added:** A new option to enable pointer validation (default on). This is resource-intensive, but might prevent crashes.
+- **Fixed:** A crash when setting an empty text for a TextNode.
+- **Fixed:** A possible crash when hovering nodes.
+- **Updated:** ClientStructs now at [6f339d8f](https://github.com/aers/FFXIVClientStructs/tree/6f339d8f) ([compare](https://github.com/aers/FFXIVClientStructs/compare/e5dedba4..6f339d8f)).
+
+## [1.40.1] (2025-12-04)
+
+- **Added:** A new Beast Tribe tab. Nothing special, just displaying some values.
+- **Fixed:** `ImGuiHelpers.SeStringWrapped` from Dalamud now requires the font to be set when passing in a draw list (used to calculate tooltip text sizes in here).
+
+## [1.40.0] (2025-12-02)
+
+- **Added:** A new Inventory Operations tab. Please note that not all inventory operations are actually logged and that the types might be incorrect.
+- **Added:** A new "Observe AtkValues" button was added to the Addon Inspector which allows logging AtkValues from OnSetup and OnRefresh calls.
+- **Added:** A LuaLogger to log `print` and panic output to `/xllog`. Needs to be enabled in the plugin configuration.
+- **Fixed:** The last selected tab wasn't restored when the window opened. It is now selected after the pinned instances are loaded.
+- **Fixed:** The last entry of every id range in the Completion tab was missing.
+- **Updated:** Added support for checking the Achievement.CompletedAchievements BitArray to the Unlock Span Length Test tab.
+- **Updated:** ClientStructs now at [e5dedba4](https://github.com/aers/FFXIVClientStructs/tree/e5dedba4) ([compare](https://github.com/aers/FFXIVClientStructs/compare/94e37492..e5dedba4)).
+
+## [1.39.1] (2025-11-25)
+
+- **Added:** Found 2 Permissions names: 150 = Idle Camera, 178 = Group Pose
+- **Added:** The Excel (v2) tab now supports searching values in collections.
+- **Removed:** The Excel tab was removed.
+- **Changed:** The Excel (v2) tab was renamed to Excel.
+- **Fixed:** It was not possible to search for macros in the excel sheet columns.
+
+## [1.39.0] (2025-11-24)
+
+- **Added:** Excel (v2) now supports displaying untyped sheets and now has a global search (Thanks to @Oblituarius!)
+  - I made the following changes after the PR has been merged:
+    - **Added:** A toggle allows searching for strings as macro strings.
+    - **Added:** Subrow sheets are now supported in the global search.
+    - **Updated:** Improved performace for global search by adding parallelization and checking column types.
+- **Fixed:** The "Outfits" table is now refreshed when logging in.
+- **Fixed:** The "Unlocks" summary table now renders correctly again.
+- **Fixed:** The tables in the "Drag Drop Type" tab now have a fixed height of 600px, so they are actually usable.
+- **Changed:** The "Item Action Type" tab was renamed to "Item Actions". The ItemAction sheet a mapping between the Item and the Action sheet. Who knew?
+- **Changed:** A couple services now load asynchronously to make opening the window faster and not hang the game for a couple seconds.
+- **Updated:** The RowIds in the "Excel (v2)" tab can now be copied.
+- **Updated:** ClientStructs now at [94e37492](https://github.com/aers/FFXIVClientStructs/tree/94e37492) ([compare](https://github.com/aers/FFXIVClientStructs/compare/f2341514..94e37492)).
+
+## [1.38.0] (2025-10-28)
+
+- **Added:** New unlock tab "Items".
+- **Added:** Type redirect for FishingEventHandler.
+- **Added:** Support to switch to experimental sheets in the "Excel (v2)" tab.
+- **Added:** A Patch column was added to the "Recipes" unlock tab.
+- **Added:** The missing 4 new unknown columns to the "UIColor" tab.
+- **Added:** "Unlock Span Length Test" tab now lists arrays from QuestManager.
+- **Fixed:** "UIColor" inputs are now correctly spanning the whole width of the column.
+- **Fixed:** PlaceNames in the "Territory Intended Use" tab are now correctly using the UI language.
+- **Updated:** The "Territory Intended Use" and "Item Action Type" tabs now load their data asynchronously.
+- **Updated:** ClientStructs now at [f2341514](https://github.com/aers/FFXIVClientStructs/tree/f2341514) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b1dabe8d..f2341514)).
+
+## [1.37.0] (2025-10-13)
+
+- **Added:** A Furniture Catalog tab to preview all indoor and outdoor furniture, including those that aren't listed in the games list.
+- **Added:** A Gaiji Fontdata (gfd) tab, including names of Dalamuds BitmapFontIcon.
+- **Updated:** Currency Manager tab now shows currency icons and items have a context menu.
+- **Updated:** Added support for the following sheets to the Unlock Links table: BGMSwitch, DescriptionSection, EmjVoiceNpc, EventTutorial, MKDLore and PatchMark.
+- **Updated:** Added support for Occult Record Items to the Unlock Links table.
+- **Updated:** ClientStructs now at [b1dabe8d](https://github.com/aers/FFXIVClientStructs/tree/b1dabe8d) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b41eccb6..b1dabe8d)).
+- **Fixed:** The width of the Sheet/Row column in the Unlock Links table has been increased slightly to fit the text.
+- **Fixed:** Filtered out 3 unobtainable Chocobo Taxi Stands.
+- **Fixed:** Filtered out Emotes without a value in the Order column.
+
+## [1.36.0] (2025-09-29)
+
+- **Added:** Golden Agent/Addon navigation links in the Addon Inspector and Agents tabs.
+- **Added:** The Addon Inspector now shows the callback handler, including EventKind.
+- **Added:** ByteColor structs now also show the color in CSS hex color notation (8 digits), the UIColor RowId (if found for the current theme) and a small visual preview.
+- **Added:** Type redirect for MassivePcContentDirector.
+- **Updated:** ClientStructs now at [b41eccb6](https://github.com/aers/FFXIVClientStructs/tree/b41eccb6) ([compare](https://github.com/aers/FFXIVClientStructs/compare/775e4363..b41eccb6)).
+
+## [1.35.1] (2025-09-23)
+
+- **Updated:** Text in the "Completion" tab is now copyable.
+- **Fixed:** The categories in the "Completion" tab are now correctly force-opened when the search term has changed and exists.
+
+## [1.35.0] (2025-09-23)
+
+- **Added:** A Completion tab to search through auto-translate texts.
+- **Updated:** The "Export Timeline" button now copies code that is indented using tabs.
+- **Updated:** Updated Link macro expression names and added names for Description, WKSPioneeringTrail and MKDLore links.
+- **Fixed:** When using the "Export Timeline" button, `textColor` and `textOutlineColor` parameters had a closing bracket too much after the value.
+- **Updated:** ClientStructs now at [775e4363](https://github.com/aers/FFXIVClientStructs/tree/775e4363) ([compare](https://github.com/aers/FFXIVClientStructs/compare/e6a625a0..775e4363)).
+
+## [1.34.2] (2025-09-21)
+
+- **Fixed:** In the Addon Inspector, the "Export Timeline" button now also supports Text Color keyframes. I forgot to add this last update.
+
+## [1.34.1] (2025-09-21)
+
+- **Fixed:** In the Addon Inspector, Text Nodes now correctly show Text Color keyframes instead of Part ID keyframes.
+- **Updated:** ClientStructs now at [e6a625a0](https://github.com/aers/FFXIVClientStructs/tree/e6a625a0) ([compare](https://github.com/aers/FFXIVClientStructs/compare/c5652dd3..e6a625a0)).
+
+## [1.34.0] (2025-09-17)
+
+- **Added:** An "Event Object Manager" tab.
+- **Added:** New unlock tabs "Chocobo Taxi Stands" and "HowTos".
 - **Added:** An "Unlock Span Length Test" tab to quickly validate most bit arrays in UIState and PlayerState.
-- **Updated:** ClientStructs now at [fefa7bfb](https://github.com/aers/FFXIVClientStructs/tree/fefa7bfb) ([compare](https://github.com/aers/FFXIVClientStructs/compare/59feea87..fefa7bfb)).
+- **Fixed:** `void*` no longer show their own address. Instead, the address it points to is shown.
+- **Updated:** ClientStructs now at [c5652dd3](https://github.com/aers/FFXIVClientStructs/tree/c5652dd3) ([compare](https://github.com/aers/FFXIVClientStructs/compare/59feea87..c5652dd3)).
 
 ## [1.33.0] (2025-09-11)
 
@@ -526,7 +677,25 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.33.0...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.4...main
+[1.42.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.3...v1.42.4
+[1.42.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.2...v1.42.3
+[1.42.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.1...v1.42.2
+[1.42.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.0...v1.42.1
+[1.42.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.41.0...v1.42.0
+[1.41.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.40.1...v1.41.0
+[1.40.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.40.0...v1.40.1
+[1.40.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.39.1...v1.40.0
+[1.39.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.39.0...v1.39.1
+[1.39.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.38.0...v1.39.0
+[1.38.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.37.0...v1.38.0
+[1.37.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.36.0...v1.37.0
+[1.36.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.35.1...v1.36.0
+[1.35.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.35.0...v1.35.1
+[1.35.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.34.2...v1.35.0
+[1.34.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.34.1...v1.34.2
+[1.34.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.34.0...v1.34.1
+[1.34.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.2...v1.33.0
 [1.32.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.1...v1.32.2
 [1.32.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.32.0...v1.32.1

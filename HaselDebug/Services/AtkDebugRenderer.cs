@@ -1,54 +1,63 @@
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Numerics;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselCommon.Graphics;
-using HaselCommon.Services;
 using HaselDebug.Extensions;
+using HaselDebug.Service;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using Lumina.Text.ReadOnly;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HaselDebug.Services;
+
+public struct DrawAddonParams()
+{
+    public ushort AddonId { get; set; }
+    public string? AddonName { get; set; }
+    public List<Pointer<AtkResNode>>? NodePath { get; set; }
+    public bool Border { get; set; } = true;
+    public bool UseNavigationService { get; set; } = true;
+}
 
 [RegisterSingleton, AutoConstruct]
 public unsafe partial class AtkDebugRenderer
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IAddonLifecycle _addonLifecycle;
+    private readonly TypeService _typeService;
     private readonly DebugRenderer _debugRenderer;
     private readonly TextService _textService;
     private readonly WindowManager _windowManager;
     private readonly LanguageProvider _languageProvider;
     private readonly AddonObserver _addonObserver;
     private readonly PinnedInstancesService _pinnedInstancesService;
+    private readonly NavigationService _navigationService;
+    private readonly ProcessInfoService _processInfoService;
+    private readonly Dictionary<string, OrderedDictionary<int, (string, Type?)>> _fieldMapping = [];
     private string _nodeQuery = string.Empty;
 
-    public void DrawAddon(ushort addonId, string addonName, List<Pointer<AtkResNode>>? nodePath = null, bool border = true)
+    public void DrawAddon(DrawAddonParams drawParams)
     {
-        if (addonId == 0 && string.IsNullOrEmpty(addonName))
+        if (drawParams.AddonId == 0 && string.IsNullOrEmpty(drawParams.AddonName))
             return;
 
-        using var hostchild = ImRaii.Child("AddonChild", new Vector2(-1), border, ImGuiWindowFlags.NoSavedSettings);
+        using var hostchild = ImRaii.Child("AddonChild", new Vector2(-1), drawParams.Border, ImGuiWindowFlags.NoSavedSettings);
 
         var unitManager = RaptureAtkUnitManager.Instance();
 
         AtkUnitBase* unitBase = null;
 
-        if (addonId != 0)
-            unitBase = unitManager->GetAddonById(addonId);
+        if (drawParams.AddonId != 0)
+            unitBase = unitManager->GetAddonById(drawParams.AddonId);
 
-        if ((unitBase == null && !string.IsNullOrEmpty(addonName)) || (unitBase != null && unitBase->NameString != addonName))
-            unitBase = unitManager->GetAddonByName(addonName);
+        if ((unitBase == null && !string.IsNullOrEmpty(drawParams.AddonName)) || (unitBase != null && unitBase->NameString != drawParams.AddonName))
+            unitBase = unitManager->GetAddonByName(drawParams.AddonName);
 
-        if (unitBase == null)
+        if (!_processInfoService.IsPointerValid(unitBase))
         {
-            ImGui.Text($"Could not find addon with id {addonId} or name {addonName}");
+            ImGui.Text($"Could not find addon with id {drawParams.AddonId} or name {drawParams.AddonName}");
             return;
         }
 
@@ -59,10 +68,24 @@ public unsafe partial class AtkDebugRenderer
             UnitBase = unitBase,
         };
 
-        if (!_debugRenderer.AddonTypes.TryGetValue(unitBase->NameString, out var type))
-            type = typeof(AtkUnitBase);
+        var type = _typeService.GetAddonType(unitBase->NameString);
 
-        ImGuiUtilsEx.DrawCopyableText(unitBase->NameString);
+        if (!_fieldMapping.ContainsKey(unitBase->NameString))
+        {
+            var fields = _fieldMapping[unitBase->NameString] = [];
+
+            LoadTypeMapping(fields, "", 0, type);
+
+            for (var offset = 0; offset < type.SizeOf() - 8; offset += 8)
+            {
+                if (!fields.ContainsKey(offset))
+                {
+                    fields[offset] = ($"+0x{offset:X}", null);
+                }
+            }
+        }
+
+        ImGuiUtils.DrawCopyableText(unitBase->NameString);
 
         ImGui.SameLine();
 
@@ -95,11 +118,13 @@ public unsafe partial class AtkDebugRenderer
             if (agent == null || agent->AddonId != unitBase->Id)
                 continue;
 
-            ImGui.Text($"Used by Agent{agentId}");
+            ImGui.Text("Used by"u8);
+            ImGuiUtils.SameLineSpace();
+            _navigationService.DrawAgentLink(agentId);
+
             ImGui.SameLine();
 
-            if (!_debugRenderer.AgentTypes.TryGetValue(agentId, out var agentType))
-                agentType = typeof(AgentInterface);
+            var agentType = _typeService.GetAgentType(agentId);
 
             _debugRenderer.DrawPointerType(agent, agentType, nodeOptions.WithAddress((nint)agent) with
             {
@@ -108,8 +133,8 @@ public unsafe partial class AtkDebugRenderer
                 {
                     var isPinned = _pinnedInstancesService.Contains(agentType);
 
-                    builder.AddCopyName(_textService, agentId.ToString());
-                    builder.AddCopyAddress(_textService, (nint)agent);
+                    builder.AddCopyName(agentId.ToString());
+                    builder.AddCopyAddress((nint)agent);
 
                     builder.AddSeparator();
 
@@ -137,38 +162,51 @@ public unsafe partial class AtkDebugRenderer
             });
         }
 
+        // Callback
+        var atkModule = RaptureAtkModule.Instance();
+        if (atkModule->AddonCallbackMapping.TryGetValue(unitBase->Id, out var addonCallbackEntry, false))
+        {
+            var agentFound = false;
+
+            if (addonCallbackEntry.AgentInterface != null)
+            {
+                foreach (var agentId in Enum.GetValues<AgentId>())
+                {
+                    var agent = agentModule->GetAgentByInternalId(agentId);
+                    if (agent != addonCallbackEntry.AgentInterface)
+                        continue;
+
+                    agentFound = true;
+
+                    ImGui.Text("Callback handler is"u8);
+                    ImGuiUtils.SameLineSpace();
+                    _navigationService.DrawAgentLink(agentId);
+                    ImGuiUtils.SameLineSpace();
+                    ImGui.Text($"with EventKind {addonCallbackEntry.EventKind}");
+
+                    break;
+                }
+            }
+
+            if (!agentFound && addonCallbackEntry.EventInterface != null)
+            {
+                ImGui.Text("Callback handler at"u8);
+                ImGuiUtils.SameLineSpace();
+                _debugRenderer.DrawAddress(addonCallbackEntry.EventInterface);
+                ImGuiUtils.SameLineSpace();
+                ImGui.Text($"with EventKind {addonCallbackEntry.EventKind}");
+            }
+        }
+
         // Host
         if (unitBase->HostId != 0)
         {
             var host = unitManager->GetAddonById(unitBase->HostId);
             if (host != null)
             {
-                ImGui.Text($"Embedded by Addon{host->NameString}");
-                ImGui.SameLine();
-
-                if (!_debugRenderer.AddonTypes.TryGetValue(host->NameString, out var hostType))
-                    hostType = typeof(AgentInterface);
-
-                _debugRenderer.DrawPointerType((nint)host, hostType, nodeOptions.WithAddress((nint)host) with
-                {
-                    DefaultOpen = false,
-                    DrawContextMenu = (nodeOptions, builder) =>
-                    {
-                        var isPinned = _pinnedInstancesService.Contains(hostType);
-
-                        builder.AddCopyName(_textService, host->NameString);
-                        builder.AddCopyAddress(_textService, (nint)host);
-
-                        builder.AddSeparator();
-
-                        builder.Add(new ImGuiContextMenuEntry()
-                        {
-                            Visible = !_windowManager.Contains(win => win.WindowName == hostType.Name),
-                            Label = _textService.Translate("ContextMenu.TabPopout"),
-                            ClickCallback = () => _windowManager.Open(ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)host, hostType, string.Empty))
-                        });
-                    }
-                });
+                ImGui.Text("Embedded by"u8);
+                ImGuiUtils.SameLineSpace();
+                _navigationService.DrawAddonLink(host->Id, host->NameString);
             }
         }
 
@@ -189,11 +227,19 @@ public unsafe partial class AtkDebugRenderer
             ("Size (scaled)", $"{scaledWidth}x{scaledHeight}"),
             ("Widget Count", $"{unitBase->UldManager.ObjectCount}"));
 
+        if (ImGui.Button("Observe AtkValues"))
+        {
+            var addonName = unitBase->NameString;
+            _windowManager.CreateOrOpen(
+                addonName + " - AtkValues Observer",
+                () => new AddonAtkValuesObserverWindow(_windowManager, _textService, _addonObserver, _addonLifecycle, _debugRenderer) { AddonName = addonName });
+        }
+
         ImGuiUtilsEx.PaddedSeparator();
 
         if (unitBase->RootNode != null)
         {
-            PrintNode(unitBase->RootNode, true, string.Empty, nodePath, nodeOptions with { DefaultOpen = true });
+            PrintNode(unitBase->RootNode, true, string.Empty, drawParams.NodePath, nodeOptions with { DefaultOpen = true });
         }
 
         if (unitBase->UldManager.NodeListCount > 0)
@@ -228,7 +274,41 @@ public unsafe partial class AtkDebugRenderer
                     continue;
                 }
 
-                PrintNode(node, false, $"[{j++}] ", nodePath, nodeOptions with { DefaultOpen = false });
+                PrintNode(node, false, $"[{j++}] ", drawParams.NodePath, nodeOptions with { DefaultOpen = false });
+            }
+        }
+    }
+
+    // TODO: move to Utils
+    public static void LoadTypeMapping(OrderedDictionary<int, (string, Type?)> fields, string prefix, int offset, Type type)
+    {
+        foreach (var fieldInfo in type.GetFields(BindingFlags.Default | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            if (fieldInfo.GetCustomAttribute<FieldOffsetAttribute>() is not { } fieldOffsetAttribute)
+                continue;
+
+            if (fieldInfo.IsAssembly
+                && fieldInfo.GetCustomAttribute<FixedSizeArrayAttribute>() is FixedSizeArrayAttribute fixedSizeArrayAttribute
+                && !fixedSizeArrayAttribute.IsString
+                && !fixedSizeArrayAttribute.IsBitArray
+                && fieldInfo.FieldType.GetCustomAttribute<InlineArrayAttribute>() is InlineArrayAttribute inlineArrayAttribute)
+            {
+                var innerType = fieldInfo.FieldType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)[0].FieldType;
+                for (var i = 0; i < inlineArrayAttribute.Length; i++)
+                {
+                    LoadTypeMapping(fields, $"{prefix}{fieldInfo.Name[1..].FirstCharToUpper()}[{i}].", offset + fieldOffsetAttribute.Value + i * innerType.SizeOf(), innerType);
+                }
+            }
+            else if (fieldInfo.FieldType.IsStruct())
+            {
+                LoadTypeMapping(fields, prefix + fieldInfo.Name + ".", offset + fieldOffsetAttribute.Value, fieldInfo.FieldType);
+            }
+            else
+            {
+                if (!fields.ContainsKey(offset + fieldOffsetAttribute.Value))
+                {
+                    fields[offset + fieldOffsetAttribute.Value] = (prefix + fieldInfo.Name, fieldInfo.FieldType);
+                }
             }
         }
     }
@@ -269,7 +349,7 @@ public unsafe partial class AtkDebugRenderer
     public void DrawNode(AtkResNode* node)
     {
         var unitManager = RaptureAtkUnitManager.Instance();
-        var unitBase = unitManager->GetAddonByNode(node);
+        var unitBase = unitManager->AtkUnitManager.GetAddonByNodeSafe(node);
         if (unitBase == null)
         {
             ImGui.Text($"Could not find addon with node {(nint)node:X}");
@@ -304,10 +384,19 @@ public unsafe partial class AtkDebugRenderer
 
     private void PrintSimpleNode(AtkResNode* node, string treePrefix, List<Pointer<AtkResNode>>? nodePath, NodeOptions nodeOptions)
     {
+        using var rssb = new RentedSeStringBuilder();
+        var titleBuilder = rssb.Builder
+            .PushColorRgba(node->IsVisible() ? Color.Green : Color.Grey)
+            .Append($"{treePrefix}[#{node->NodeId}] {node->Type} Node ({(nint)node:X})")
+            .PopColor();
+
+        AddNodeFieldSuffix(titleBuilder, node, nodeOptions);
+
         using var treeNode = _debugRenderer.DrawTreeNode(nodeOptions with
         {
-            Title = $"{treePrefix}[#{node->NodeId}] {node->Type} Node (0x{(nint)node:X})",
-            TitleColor = node->IsVisible() ? Color.Green : Color.Grey,
+            SeStringTitle = titleBuilder.ToReadOnlySeString(),
+            DrawSeStringTreeNode = true,
+            TitleColor = node->IsVisible() ? Color.Green : Color.Grey, // needed for the tree node arrow
             HighlightAddress = (nint)node,
             HighlightType = typeof(AtkResNode),
             DrawContextMenu = (nodeOptions, builder) =>
@@ -364,10 +453,19 @@ public unsafe partial class AtkDebugRenderer
         if (objectInfo == null)
             return;
 
+        using var rssb = new RentedSeStringBuilder();
+        var titleBuilder = rssb.Builder
+            .PushColorRgba(node->IsVisible() ? Color.Green : Color.Grey)
+            .Append($"{treePrefix}[#{node->NodeId}] {objectInfo->ComponentType} Component Node (Node: {(nint)node:X}, Component: {(nint)component:X})")
+            .PopColor();
+
+        AddNodeFieldSuffix(titleBuilder, (AtkResNode*)node, nodeOptions);
+
         using var treeNode = _debugRenderer.DrawTreeNode(nodeOptions with
         {
-            Title = $"{treePrefix}[#{node->NodeId}] {objectInfo->ComponentType} Component Node (Node: 0x{(nint)node:X}, Component: 0x{(nint)component:X})",
-            TitleColor = node->IsVisible() ? Color.Green : Color.Grey,
+            SeStringTitle = titleBuilder.ToReadOnlySeString(),
+            DrawSeStringTreeNode = true,
+            TitleColor = node->IsVisible() ? Color.Green : Color.Grey, // needed for the tree node arrow
             HighlightAddress = (nint)node,
             HighlightType = typeof(AtkComponentNode),
             DrawContextMenu = (nodeOptions, builder) =>
@@ -431,6 +529,28 @@ public unsafe partial class AtkDebugRenderer
         for (var i = 0; i < component->UldManager.NodeListCount; i++)
         {
             PrintNode(component->UldManager.NodeList[i], false, $"[{i}] ", nodePath, nodeOptions);
+        }
+    }
+
+    private void AddNodeFieldSuffix(SeStringBuilder titleBuilder, AtkResNode* node, NodeOptions nodeOptions)
+    {
+        if (nodeOptions.UnitBase.HasValue && _fieldMapping.TryGetValue(nodeOptions.UnitBase.Value.Value->NameString, out var fields))
+        {
+            var unitBaseAddress = (nint)nodeOptions.UnitBase.Value.Value;
+            foreach (var (offset, (name, type)) in fields)
+            {
+                var fieldValue = *(nint*)(unitBaseAddress + offset);
+                if (fieldValue != (nint)node)
+                    continue;
+
+                titleBuilder
+                    .Append(' ')
+                    .PushColorRgba(Color.Cyan)
+                    .Append(name)
+                    .PopColor();
+
+                break;
+            }
         }
     }
 
@@ -534,7 +654,7 @@ public unsafe partial class AtkDebugRenderer
 
         if (ImGui.Button($"Export Timeline##{(nint)node:X}"))
         {
-            ExportTimeline(node->Timeline);
+            ExportTimeline(node);
         }
 
         var labelSets = node->Timeline->Resource->LabelSets;
@@ -601,7 +721,7 @@ public unsafe partial class AtkDebugRenderer
 
         if (ImGui.Button($"Export Timeline##{(nint)node:X}"))
         {
-            ExportTimeline(node->Timeline);
+            ExportTimeline(node);
         }
 
         for (var i = 0; i < node->Timeline->Resource->AnimationCount; i++)
@@ -616,7 +736,8 @@ public unsafe partial class AtkDebugRenderer
             var hasScale = animation.KeyGroups[2].KeyFrameCount > 0;
             var hasAlpha = animation.KeyGroups[3].KeyFrameCount > 0;
             var hasTint = animation.KeyGroups[4].KeyFrameCount > 0;
-            var hasPartId = animation.KeyGroups[5].KeyFrameCount > 0;
+            var hasPartId = node->Type is NodeType.Image or NodeType.NineGrid or NodeType.ClippingMask && animation.KeyGroups[5].KeyFrameCount > 0;
+            var hasTextColor = node->Type == NodeType.Text && animation.KeyGroups[5].KeyFrameCount > 0;
             var hasTextEdge = animation.KeyGroups[6].KeyFrameCount > 0;
             var hasTextLabel = animation.KeyGroups[7].KeyFrameCount > 0;
 
@@ -627,10 +748,11 @@ public unsafe partial class AtkDebugRenderer
             if (hasAlpha) tableColumnCount += 1;
             if (hasTint) tableColumnCount += 2;
             if (hasPartId) tableColumnCount += 1;
+            if (hasTextColor) tableColumnCount += 1;
             if (hasTextEdge) tableColumnCount += 1;
             if (hasTextLabel) tableColumnCount += 1;
 
-            var groupHasAnyFrames = hasPosition || hasRotation || hasScale || hasAlpha || hasTint || hasPartId || hasTextEdge || hasTextLabel;
+            var groupHasAnyFrames = hasPosition || hasRotation || hasScale || hasAlpha || hasTint || hasPartId || hasTextColor || hasTextEdge || hasTextLabel;
 
             if (!groupHasAnyFrames)
             {
@@ -673,6 +795,11 @@ public unsafe partial class AtkDebugRenderer
             if (hasPartId)
             {
                 ImGui.TableSetupColumn("Part ID"u8, ImGuiTableColumnFlags.WidthFixed);
+            }
+
+            if (hasTextColor)
+            {
+                ImGui.TableSetupColumn("Text Color"u8, ImGuiTableColumnFlags.WidthFixed);
             }
 
             if (hasTextEdge)
@@ -729,33 +856,33 @@ public unsafe partial class AtkDebugRenderer
                             case 0 when hasPosition: // Position
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
 
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 1 when hasRotation: // Rotation
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Float.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 2 when hasScale: // Scale
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Float2.Item1.ToString(CultureInfo.InvariantCulture));
 
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Float2.Item2.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 3 when hasAlpha: // Alpha
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.Byte.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.Byte.ToString(CultureInfo.InvariantCulture));
                                 break;
 
                             case 4 when hasTint: // NodeTint
@@ -773,20 +900,27 @@ public unsafe partial class AtkDebugRenderer
                             case 5 when hasPartId: // PartId
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture));
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture));
+                                break;
+
+                            case 5 when hasTextColor: // TextColor
+                                ImGui.TableNextColumn();
+                                var textColor = new Vector3(keyFrame.Value.RGB.R, keyFrame.Value.RGB.G, keyFrame.Value.RGB.B) / 255f;
+                                ImGui.SetNextItemWidth(ColorEditWidth);
+                                ImGui.ColorEdit3(numericNodeOptions.GetKey("TextColor"), ref textColor);
                                 break;
 
                             case 6 when hasTextEdge: // TextEdge
                                 ImGui.TableNextColumn();
-                                var outlineColor = new Vector3(keyFrame.Value.RGB.R, keyFrame.Value.RGB.G, keyFrame.Value.RGB.B) / 255f;
+                                var edgeColor = new Vector3(keyFrame.Value.RGB.R, keyFrame.Value.RGB.G, keyFrame.Value.RGB.B) / 255f;
                                 ImGui.SetNextItemWidth(ColorEditWidth);
-                                ImGui.ColorEdit3(numericNodeOptions.GetKey("OutlineColor"), ref outlineColor);
+                                ImGui.ColorEdit3(numericNodeOptions.GetKey("TextEdgeColor"), ref edgeColor);
                                 break;
 
                             case 7 when hasTextLabel: // TextLabel
                                 ImGui.TableNextColumn();
                                 ImGui.AlignTextToFramePadding();
-                                ImGuiUtilsEx.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture)); // Might not be the correct property UShort vs Short for this bucket
+                                ImGuiUtils.DrawCopyableText(keyFrame.Value.UShort.ToString(CultureInfo.InvariantCulture)); // Might not be the correct property UShort vs Short for this bucket
                                 break;
                         }
                     }
@@ -795,13 +929,14 @@ public unsafe partial class AtkDebugRenderer
         }
     }
 
-    private void ExportTimeline(AtkTimeline* timeline)
+    private void ExportTimeline(AtkResNode* node)
     {
-        if (timeline == null ||
-            timeline->Resource == null)
-        {
+        if (node == null)
             return;
-        }
+
+        var timeline = node->Timeline;
+        if (timeline == null || timeline->Resource == null)
+            return;
 
         var timelineResource = timeline->Resource;
         var codeString = "new TimelineBuilder()\n";
@@ -813,18 +948,18 @@ public unsafe partial class AtkDebugRenderer
             {
                 var labelSet = timelineResource->LabelSets[i];
 
-                codeString += $".BeginFrameSet({labelSet.StartFrameIdx}, {labelSet.EndFrameIdx})\n";
+                codeString += $"\t.BeginFrameSet({labelSet.StartFrameIdx}, {labelSet.EndFrameIdx})\n";
 
                 for (var j = 0; j < labelSet.LabelKeyGroup.KeyFrameCount; j++)
                 {
                     var keyFrame = labelSet.LabelKeyGroup.KeyFrames[j];
 
                     var label = keyFrame.Value.Label;
-                    codeString += $".AddLabel({keyFrame.FrameIdx}, {label.LabelId}, AtkTimelineJumpBehavior.{label.JumpBehavior}, {label.JumpLabelId})\n";
+                    codeString += $"\t\t.AddLabel({keyFrame.FrameIdx}, {label.LabelId}, AtkTimelineJumpBehavior.{label.JumpBehavior}, {label.JumpLabelId})\n";
                 }
             }
 
-            codeString += $".EndFrameSet()\n";
+            codeString += $"\t.EndFrameSet()\n";
         }
 
         // Build Timeline Animations
@@ -834,7 +969,7 @@ public unsafe partial class AtkDebugRenderer
             {
                 var animation = timeline->Resource->Animations[i];
 
-                codeString += $".BeginFrameSet({animation.StartFrameIdx}, {animation.EndFrameIdx})\n";
+                codeString += $"\t.BeginFrameSet({animation.StartFrameIdx}, {animation.EndFrameIdx})\n";
                 var frameSetHasFrames = false;
 
                 for (var groupSelector = 0; groupSelector < 8; groupSelector++)
@@ -847,7 +982,7 @@ public unsafe partial class AtkDebugRenderer
                         var keyFrameValue = keyFrame.Value;
                         frameSetHasFrames = true;
 
-                        codeString += $".AddFrame({keyFrame.FrameIdx}, ";
+                        codeString += $"\t\t.AddFrame({keyFrame.FrameIdx}, ";
 
                         codeString += groupSelector switch
                         {
@@ -856,8 +991,9 @@ public unsafe partial class AtkDebugRenderer
                             2 => $"scale: new Vector2({keyFrameValue.Float2.Item1}, {keyFrameValue.Float2.Item2}))\n",
                             3 => $"alpha: {keyFrameValue.Byte})\n",
                             4 => $"addColor: new Vector3({keyFrameValue.NodeTint.AddR}, {keyFrameValue.NodeTint.AddG}, {keyFrameValue.NodeTint.AddB}), multiplyColor: new Vector3({keyFrameValue.NodeTint.MultiplyRGB.R}, {keyFrameValue.NodeTint.MultiplyRGB.G}, {keyFrameValue.NodeTint.MultiplyRGB.B}))\n",
-                            5 => $"partId: {keyFrameValue.UShort})\n",
-                            6 => $"textOutlineColor: new Vector3({keyFrameValue.RGB.R}, {keyFrameValue.RGB.G}, {keyFrameValue.RGB.B})))\n",
+                            5 when node->Type is NodeType.Image or NodeType.NineGrid or NodeType.ClippingMask => $"partId: {keyFrameValue.UShort})\n",
+                            5 when node->Type == NodeType.Text => $"textColor: new Vector3({keyFrameValue.RGB.R}, {keyFrameValue.RGB.G}, {keyFrameValue.RGB.B}))\n",
+                            6 => $"textOutlineColor: new Vector3({keyFrameValue.RGB.R}, {keyFrameValue.RGB.G}, {keyFrameValue.RGB.B}))\n",
                             7 => string.Empty, // Not implemented yet
                             _ => string.Empty,
                         };
@@ -866,14 +1002,14 @@ public unsafe partial class AtkDebugRenderer
 
                 if (!frameSetHasFrames)
                 {
-                    codeString += $".AddEmptyFrame({animation.StartFrameIdx})\n";
+                    codeString += $"\t\t.AddEmptyFrame({animation.StartFrameIdx})\n";
                 }
 
-                codeString += $".EndFrameSet()\n";
+                codeString += $"\t.EndFrameSet()\n";
             }
         }
 
-        codeString += $".Build();\n";
+        codeString += $"\t.Build();\n";
 
         ImGui.SetClipboardText(codeString);
     }

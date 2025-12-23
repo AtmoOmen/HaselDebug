@@ -1,21 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using Dalamud.Interface;
-using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.Text;
-using HaselCommon.Gui;
-using HaselCommon.Services;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
-using Lumina.Text;
 
 namespace HaselDebug.Tabs;
 
@@ -194,9 +185,9 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
             switch (item.Type)
             {
                 case TextParameterType.Integer:
-                    ImGuiUtilsEx.DrawCopyableText($"0x{item.IntValue:X}");
+                    ImGuiUtils.DrawCopyableText($"0x{item.IntValue:X}");
                     ImGui.SameLine();
-                    ImGuiUtilsEx.DrawCopyableText(item.IntValue.ToString());
+                    ImGuiUtils.DrawCopyableText(item.IntValue.ToString());
                     break;
 
                 case TextParameterType.ReferencedUtf8String:
@@ -411,7 +402,7 @@ public unsafe partial class RaptureTextModuleTab : DebugTab, IDisposable
                         ImGui.SameLine();
                         ImGui.Text("(vfunc: "u8);
                         ImGui.SameLine(0, 0);
-                        ImGuiUtilsEx.DrawCopyableText($"{vfOffset / 8}");
+                        ImGuiUtils.DrawCopyableText($"{vfOffset / 8}");
                         ImGui.SameLine(0, 0);
                         ImGui.Text(")"u8);
                     }

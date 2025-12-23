@@ -1,16 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using Dalamud.Interface;
-using Dalamud.Interface.Utility.Raii;
-using HaselCommon.Graphics;
-using HaselCommon.Gui;
-using HaselCommon.Services;
 using HaselDebug.Config;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
+using HaselDebug.Tabs;
 using HaselDebug.Utils;
-using Microsoft.Extensions.Logging;
 
 namespace HaselDebug.Windows;
 
@@ -20,7 +12,6 @@ public partial class PluginWindow : SimpleWindow
     private const uint SidebarWidth = 250;
 
     private readonly ILogger<PluginWindow> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly WindowManager _windowManager;
     private readonly PluginConfig _pluginConfig;
     private readonly TextService _textService;
@@ -29,6 +20,7 @@ public partial class PluginWindow : SimpleWindow
     private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly DebugRenderer _debugRenderer;
     private readonly ConfigWindow _configWindow;
+    private readonly NavigationService _navigationService;
     private readonly IEnumerable<IDebugTab> _debugTabs;
 
     private IDebugTab[] _tabs;
@@ -65,6 +57,12 @@ public partial class PluginWindow : SimpleWindow
             .OrderBy(t => t.Title)
         ];
 
+        _pinnedInstances.Loaded += OnPinnedInstancesLoaded;
+    }
+
+    private void OnPinnedInstancesLoaded()
+    {
+        _pinnedInstances.Loaded -= OnPinnedInstancesLoaded;
         SelectTabWithoutSave(_pluginConfig.LastSelectedTab);
     }
 
@@ -89,9 +87,26 @@ public partial class PluginWindow : SimpleWindow
 
     public override void Draw()
     {
+        HandleNavigation();
+
         DrawSidebar();
         ImGui.SameLine();
         DrawTab();
+
+        _navigationService.PostDraw();
+    }
+
+    private void HandleNavigation()
+    {
+        switch (_navigationService.CurrentNavigation)
+        {
+            case AddonNavigation when _selectedTab is not AddonInspectorTab:
+                SelectTab(nameof(AddonInspectorTab));
+                break;
+            case AgentNavigation when _selectedTab is not AgentsTab:
+                SelectTab(nameof(AgentsTab));
+                break;
+        }
     }
 
     private void DrawSidebar()
@@ -230,7 +245,7 @@ public partial class PluginWindow : SimpleWindow
     private void SelectTabWithoutSave(string internalName)
     {
         _selectedTab = _pinnedInstances.FirstOrDefault(tab => tab.InternalName == internalName)
-            ?? (IDebugTab?)_tabs.FirstOrDefault(tab => tab.InternalName == internalName)
+            ?? _tabs.FirstOrDefault(tab => tab.InternalName == internalName)
             ?? _tabs
                 .Where(tab => tab.SubTabs?.Any(subTab => subTab.InternalName == internalName) == true)
                 .Select(tab => tab.SubTabs?.FirstOrDefault(subTab => subTab.InternalName == internalName))

@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/13.1.0">
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <!-- Project settings -->
   <PropertyGroup>
-    <Version>1.33.0</Version>
+    <Name>HaselDebug</Name>
+    <Version>1.42.4</Version>
+    <Author>Haselnussbomber</Author>
+    <RepoUrl>https://github.com/Haselnussbomber/HaselDebug</RepoUrl>
+    <Punchline>Various tools to debug things.</Punchline>
+    <Description>For developers.</Description>
+  </PropertyGroup>
+
+  <!-- Build settings -->
+  <PropertyGroup>
     <OutputPath>..\bin\</OutputPath>
     <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
     <DefineConstants>$(DefineConstants);AUTOCTOR_EMBED_ATTRIBUTES</DefineConstants>
+    <NoWarn>$(NoWarn);Dalamud001;MSB3277</NoWarn>
   </PropertyGroup>
 
   <!-- Dalamud.NET.Sdk settings -->
@@ -25,20 +35,18 @@
     <None Include="LICENSES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- References to Dalamud dependencies -->
-  <ItemGroup>
-    <Reference Include="Reloaded.Assembler" Private="false" />
-    <Reference Include="SharpDX" Private="false" />
-    <Reference Include="SharpDX.DXGI" Private="false" />
-    <Reference Include="SharpDX.Direct3D11" Private="false" />
-    <Reference Include="SharpDX.Mathematics" Private="false" />
+  <!-- data.yml -->
+  <ItemGroup Condition="Exists('..\FFXIVClientStructs\ida\data.yml')">
+    <EmbeddedResource Include="..\FFXIVClientStructs\ida\data.yml" />
   </ItemGroup>
 
   <!-- NuGet dependencies -->
   <ItemGroup>
-    <PackageReference Include="AutoCtor" Version="2.8.1" PrivateAssets="all" ExcludeAssets="compile;runtime" />
-    <PackageReference Include="Injectio" Version="5.0.0" PrivateAssets="all" />
+    <PackageReference Include="AutoCtor" Version="2.10.0" PrivateAssets="all" ExcludeAssets="compile;runtime" />
+    <PackageReference Include="Injectio" Version="5.1.0" PrivateAssets="all" />
     <PackageReference Include="Iced" Version="1.21.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.264" PrivateAssets="All" />
   </ItemGroup>
 
   <!-- FFXIVClientStructs -->
