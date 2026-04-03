@@ -50,7 +50,7 @@ public partial class PluginConfig : IPluginConfiguration
         try
         {
             var serialized = JsonSerializer.Serialize(this, SerializerOptions);
-            var hash = serialized.GetHashCode();
+            var hash = serialized.GetHashCode(StringComparison.Ordinal);
 
             if (LastSavedConfigHash != hash)
             {
@@ -69,9 +69,12 @@ public partial class PluginConfig : IPluginConfiguration
 public partial class PluginConfig
 {
     public int Version { get; set; } = CURRENT_CONFIG_VERSION;
+    public bool ShowInDevMenu = true;
     public bool AutoOpenPluginWindow = false;
     public bool EnableLuaLogger = false;
     public bool ResolveAddonLifecycleVTables = true;
+    public bool ResolveAgentLifecycleVTables = true;
+    public bool SpacesInKTKNames = true;
     public string LastSelectedTab = "";
     public string[] PinnedInstances = [];
     public bool Excel2Tab_ShowRawSheets = false;

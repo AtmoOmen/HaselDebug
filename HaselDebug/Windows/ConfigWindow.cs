@@ -30,6 +30,12 @@ public partial class ConfigWindow : SimpleWindow
     {
         var configChanged = false;
 
+        // ShowInDevMenu
+        configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.ShowInDevMenu.Label")}##ShowInDevMenu", ref _pluginConfig.ShowInDevMenu);
+
+        using (ImGuiUtils.ConfigIndent())
+            ImGui.TextColoredWrapped(Color.Grey3, _textService.Translate("Config.ShowInDevMenu.Description"));
+
         // AutoOpenPluginWindow
         configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.AutoOpenPluginWindow.Label")}##AutoOpenPluginWindow", ref _pluginConfig.AutoOpenPluginWindow);
 
@@ -41,6 +47,15 @@ public partial class ConfigWindow : SimpleWindow
 
         // ResolveAddonLifecycleVTables
         configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.ResolveAddonLifecycleVTables.Label")}##ResolveAddonLifecycleVTables", ref _pluginConfig.ResolveAddonLifecycleVTables);
+
+        // ResolveAgentLifecycleVTables
+        configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.ResolveAgentLifecycleVTables.Label")}##ResolveAgentLifecycleVTables", ref _pluginConfig.ResolveAgentLifecycleVTables);
+
+        // SpacesInKTKNames
+        configChanged |= ImGui.Checkbox($"{_textService.Translate("Config.SpacesInKTKNames.Label")}##SpacesInKTKNames", ref _pluginConfig.SpacesInKTKNames);
+
+        using (ImGuiUtils.ConfigIndent())
+            ImGui.TextColoredWrapped(Color.Grey3, _textService.Translate("Config.SpacesInKTKNames.Description"));
 
         if (configChanged)
         {

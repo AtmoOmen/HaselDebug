@@ -1,6 +1,8 @@
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Extensions;
+using HaselDebug.Service;
 using HaselDebug.Windows;
 
 namespace HaselDebug.Services;
@@ -12,7 +14,7 @@ public unsafe partial class NavigationService
     private readonly WindowManager _windowManager;
     private readonly TextService _textService;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ImGuiContextMenuService _imGuiContextMenu;
+    private readonly ProcessInfoService _processInfoService;
 
     private int _tooltipIndex;
 
@@ -40,7 +42,7 @@ public unsafe partial class NavigationService
             CurrentNavigation = new AgentNavigation(agentId);
         }
 
-        _imGuiContextMenu.Draw($"AgentNavigationContextMenu{_tooltipIndex++}", (builder) =>
+        ImGuiContextMenu.Draw($"AgentNavigationContextMenu{_tooltipIndex++}", (builder) =>
         {
             var agentType = _typeService.GetAgentType(agentId);
             var agentName = agentId.ToString();
@@ -57,7 +59,7 @@ public unsafe partial class NavigationService
                 Label = _textService.Translate("ContextMenu.TabPopout"),
                 ClickCallback = () =>
                 {
-                    var window = ActivatorUtilities.CreateInstance<PointerTypeWindow>(_serviceProvider, (nint)agent, agentType, agentName);
+                    var window = _serviceProvider.CreateInstance<PointerTypeWindow>((nint)agent, agentType, agentName);
                     window.WindowName = displayName;
                     _windowManager.Open(window);
                 }
@@ -70,7 +72,7 @@ public unsafe partial class NavigationService
             {
                 Visible = !isPinned,
                 Label = _textService.Translate("ContextMenu.PinnedInstances.Pin"),
-                ClickCallback = () => pinnedInstancesService.Add((nint)agent, agentType)
+                ClickCallback = () => pinnedInstancesService.Add(agentType)
             });
 
             builder.Add(new ImGuiContextMenuEntry()
@@ -99,7 +101,7 @@ public unsafe partial class NavigationService
             CurrentNavigation = new AddonNavigation(addonId, addonName);
         }
 
-        _imGuiContextMenu.Draw($"AddonNavigationContextMenu{_tooltipIndex++}", (builder) =>
+        ImGuiContextMenu.Draw($"AddonNavigationContextMenu{_tooltipIndex++}", (builder) =>
         {
             var type = _typeService.GetAddonType(addonName);
 
@@ -118,12 +120,42 @@ public unsafe partial class NavigationService
                 Label = _textService.Translate("ContextMenu.TabPopout"),
                 ClickCallback = () =>
                 {
-                    var window = ActivatorUtilities.CreateInstance<AddonInspectorWindow>(_serviceProvider);
+                    var window = _serviceProvider.CreateInstance<AddonInspectorWindow>();
                     window.AddonId = addonId;
                     window.AddonName = addonName;
                     window.WindowName = displayName;
                     _windowManager.Open(window);
                 }
+            });
+        });
+    }
+
+    public void DrawAddressInspectorLink(nint address, uint size = 0)
+    {
+        if (address == 0)
+        {
+            ImGui.Text("null");
+            return;
+        }
+
+        var displayText = ImGui.IsKeyDown(ImGuiKey.LeftShift)
+            ? $"0x{address:X}"
+            : _processInfoService.GetAddressName(address);
+
+        ImGuiUtils.DrawCopyableText(displayText);
+
+        ImGuiContextMenu.Draw($"Address_AddressInspectorNavigation_ContextMenu{_tooltipIndex++}", (builder) =>
+        {
+            builder.AddCopyAddress(address);
+            if (displayText != $"0x{address:X}")
+                builder.AddCopyValueString(displayText);
+
+            builder.AddSeparator();
+
+            builder.Add(new ImGuiContextMenuEntry()
+            {
+                Label = _textService.Translate("ContextMenu.GoToAddressInspector"),
+                ClickCallback = () => CurrentNavigation = new AddressInspectorNavigation(address, size)
             });
         });
     }
@@ -145,9 +177,17 @@ public readonly struct AddonNavigation(ushort addonId, string? addonName) : INav
 {
     public ushort AddonId { get; init; } = addonId;
     public string? AddonName { get; init; } = addonName;
+    public List<Pointer<AtkResNode>>? NodePath { get; init; }
 }
 
 public readonly struct AgentNavigation(AgentId agentId) : INavigationParams
 {
     public AgentId AgentId { get; init; } = agentId;
+}
+
+[StructLayout(LayoutKind.Auto)]
+public readonly struct AddressInspectorNavigation(nint address, uint size = 0) : INavigationParams
+{
+    public nint Address { get; init; } = address;
+    public uint Size { get; init; } = size;
 }

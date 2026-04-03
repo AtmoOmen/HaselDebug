@@ -17,7 +17,6 @@ public unsafe partial class InventoryTab : DebugTab
     private readonly TextService _textService;
     private readonly ExcelService _excelService;
     private readonly ItemService _itemService;
-    private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly ISeStringEvaluator _seStringEvaluator;
 
     private InventoryType? _selectedInventoryType = InventoryType.Inventory1;
@@ -75,7 +74,7 @@ public unsafe partial class InventoryTab : DebugTab
             {
                 _selectedInventoryType = inventoryType;
             }
-            _imGuiContextMenu.Draw($"##InventoryContext{inventoryType}", builder =>
+            ImGuiContextMenu.Draw($"##InventoryContext{inventoryType}", builder =>
             {
                 var container = InventoryManager.Instance()->GetInventoryContainer(inventoryType);
 
@@ -137,7 +136,12 @@ public unsafe partial class InventoryTab : DebugTab
                     .ToReadOnlySeString();
 
                 _debugRenderer.DrawIcon(_itemService.GetItemIcon(itemId), ItemUtil.IsHighQuality(itemId));
-                _debugRenderer.DrawPointerType(slot, inventoryType is InventoryType.Cosmopouch1 or InventoryType.Cosmopouch2 ? typeof(WKSContentInventoryItem) : typeof(InventoryItem), new NodeOptions()
+
+                var type = inventoryType is InventoryType.Cosmopouch1 or InventoryType.Cosmopouch2
+                    ? typeof(WKSContentInventoryItem)
+                    : typeof(InventoryItem);
+
+                _debugRenderer.DrawPointerType(slot, type, new NodeOptions()
                 {
                     AddressPath = new AddressPath([(nint)inventoryType, slot->Slot]),
                     SeStringTitle = itemNameSeStr

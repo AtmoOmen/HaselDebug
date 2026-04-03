@@ -20,6 +20,14 @@
     "en": "HaselDebug Configuration",
     "de": "HaselDebug-Konfiguration"
   },
+  "Config.ShowInDevMenu.Label": {
+    "en": "Show in dev menu",
+    "de": "In Entwicklermenü anzeigen"
+  },
+  "Config.ShowInDevMenu.Description": {
+    "en": "Adds a HaselDebug menu entry to the /xldev menu bar",
+    "de": "Fügt den Menüeintrag HaselDebug zur /xldev Menüleiste hinzu"
+  },
   "Config.AutoOpenPluginWindow.Label": {
     "en": "Auto-open HaselDebug",
     "de": "HaselDebug automatisch öffnen"
@@ -33,8 +41,20 @@
     "de": "Schreibt print und panics in die Debug-Log."
   },
   "Config.ResolveAddonLifecycleVTables.Label": {
-    "en": "Resolve original Addon vtables",
-    "de": "Originale Addon vtables auflösen"
+    "en": "Resolve original Addon VTable addresses",
+    "de": "Originale Addon VTable-Adressen auflösen"
+  },
+  "Config.ResolveAgentLifecycleVTables.Label": {
+    "en": "Resolve original Agent VTable addresses",
+    "de": "Originale Agent VTable-Addressen auflösen"
+  },
+  "Config.SpacesInKTKNames.Label": {
+    "en": "Better readable KTK Node Names",
+    "de": "Besser lesbare KTK-Node-Namen"
+  },
+  "Config.SpacesInKTKNames.Description": {
+    "en": "Adds spaces between words in node names ('ExampleName' -> 'Example Name').",
+    "de": "Fügt Leerzeichen zwischen Wörtern in Knotennamen ein ('BeispielName' -> 'Beispiel Name')."
   },
 
   "SearchBar.Hint": {
@@ -42,9 +62,17 @@
     "de": "Suchen..."
   },
 
+  "ContextMenu.GoToAddressInspector": {
+    "en": "Open in Address Inspector",
+    "de": "In Address Inspector öffnen"
+  },
   "ContextMenu.CopyText": {
     "en": "Copy text",
     "de": "Text kopieren"
+  },
+  "ContextMenu.CopyValueString": {
+    "en": "Copy: {0}",
+    "de": "Kopieren: {0}"
   },
   "ContextMenu.CopyRowId": {
     "en": "Copy RowId",

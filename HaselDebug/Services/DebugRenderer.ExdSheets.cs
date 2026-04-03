@@ -14,7 +14,7 @@ public unsafe partial class DebugRenderer
             return;
         }
 
-        nodeOptions = nodeOptions.WithAddress((sheetType.Name.GetHashCode(), (nint)rowId).GetHashCode());
+        nodeOptions = nodeOptions.WithAddress((StringComparer.Ordinal.GetHashCode(sheetType.Name), (nint)rowId).GetHashCode());
 
         var title = $"{sheetType.Name}#{rowId}";
         if (!string.IsNullOrEmpty(nodeOptions.Title))
@@ -40,9 +40,9 @@ public unsafe partial class DebugRenderer
                 TextColor = ColorType
             });
             ImGui.SameLine();
-            ImGui.TextColored(ColorFieldName, propInfo.Name);
+            ImGuiUtils.DrawCopyableText(propInfo.Name, new CopyableTextOptions() { TextColor = ColorFieldName });
             ImGui.SameLine();
-            DrawExdSheetColumnValue(sheetType, rowId, propInfo.Name, depth, nodeOptions.WithAddress(propInfo.Name.GetHashCode()));
+            DrawExdSheetColumnValue(sheetType, rowId, propInfo.Name, depth, nodeOptions.WithAddress(StringComparer.Ordinal.GetHashCode(propInfo.Name)));
         }
     }
 
@@ -96,9 +96,9 @@ public unsafe partial class DebugRenderer
             var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
             DrawSeString(((ReadOnlySeString)value).AsSpan(), new NodeOptions()
             {
-                AddressPath = nodeOptions.AddressPath.With(propName.GetHashCode()),
+                AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(propName)),
                 RenderSeString = false,
-                Title = $"{row!.GetType().Name}#{rowId} ({language})",
+                Title = $"{row!.GetType().Name}#{rowId} ({language}) {propName}",
                 Language = language
             });
             return;
@@ -107,7 +107,7 @@ public unsafe partial class DebugRenderer
         if (propType == typeof(RowRef))
         {
             var columnRowId = (uint)propType.GetProperty("RowId")?.GetValue(value)!;
-            ImGui.Text(columnRowId.ToString());
+            ImGuiUtils.DrawCopyableText(columnRowId.ToString());
             return;
         }
 
@@ -126,7 +126,7 @@ public unsafe partial class DebugRenderer
             {
                 RenderSeString = nodeOptions.RenderSeString,
                 Language = nodeOptions.Language,
-                AddressPath = nodeOptions.AddressPath.With((columnRowType.Name.GetHashCode(), (nint)columnRowId).GetHashCode())
+                AddressPath = nodeOptions.AddressPath.With((StringComparer.Ordinal.GetHashCode(columnRowType.Name), (nint)columnRowId).GetHashCode())
             });
             return;
         }
@@ -141,7 +141,7 @@ public unsafe partial class DebugRenderer
             }
 
             var collectionType = propType.GenericTypeArguments[0];
-            var propNodeOptions = nodeOptions.WithAddress(collectionType.Name.GetHashCode());
+            var propNodeOptions = nodeOptions.WithAddress(StringComparer.Ordinal.GetHashCode(collectionType.Name));
 
             using var colTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
             using var colNode = ImRaii.TreeNode($"{count} Value{(count != 1 ? "s" : "")}{propNodeOptions.GetKey("CollectionNode")}", nodeOptions.GetTreeNodeFlags());
@@ -176,8 +176,9 @@ public unsafe partial class DebugRenderer
                 {
                     DrawSeString(((ReadOnlySeString)colValue).AsSpan(), true, new NodeOptions()
                     {
+                        Title = $"{row!.GetType().Name}#{rowId} {propName}[{i}]",
                         RenderSeString = nodeOptions.RenderSeString,
-                        AddressPath = nodeOptions.AddressPath.With(collectionType.Name.GetHashCode())
+                        AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(collectionType.Name))
                     });
                     continue;
                 }
@@ -185,7 +186,7 @@ public unsafe partial class DebugRenderer
                 if (collectionType == typeof(RowRef))
                 {
                     var columnRowId = (uint)collectionType.GetProperty("RowId")?.GetValue(colValue)!;
-                    ImGui.Text(columnRowId.ToString());
+                    ImGuiUtils.DrawCopyableText(columnRowId.ToString());
                     continue;
                 }
 
@@ -205,7 +206,7 @@ public unsafe partial class DebugRenderer
                     {
                         RenderSeString = nodeOptions.RenderSeString,
                         Language = nodeOptions.Language,
-                        AddressPath = nodeOptions.AddressPath.With((i, columnRowType.Name.GetHashCode(), (nint)columnRowId).GetHashCode())
+                        AddressPath = nodeOptions.AddressPath.With((i, StringComparer.Ordinal.GetHashCode(columnRowType.Name), (nint)columnRowId).GetHashCode())
                     });
                     continue;
                 }
@@ -228,7 +229,7 @@ public unsafe partial class DebugRenderer
                             TextColor = ColorType
                         });
                         ImGui.SameLine();
-                        ImGui.TextColored(ColorFieldName, pi.Name);
+                        ImGuiUtils.DrawCopyableText(pi.Name, new CopyableTextOptions() { TextColor = ColorFieldName });
                         ImGui.SameLine();
                         DrawExcelProp(pi, colValue, rowId, depth, nodeOptions);
                     }
@@ -238,7 +239,7 @@ public unsafe partial class DebugRenderer
 
                 if (collectionType.IsPrimitive)
                 {
-                    ImGui.Text(colValue.ToString());
+                    ImGuiUtils.DrawCopyableText(colValue.ToString() ?? string.Empty);
                     continue;
                 }
 
@@ -253,6 +254,6 @@ public unsafe partial class DebugRenderer
             DrawIcon(value, propType);
         }
 
-        ImGui.Text(value.ToString());
+        ImGuiUtils.DrawCopyableText(value.ToString() ?? string.Empty);
     }
 }

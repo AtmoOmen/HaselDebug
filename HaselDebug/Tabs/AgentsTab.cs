@@ -20,7 +20,6 @@ public unsafe partial class AgentsTab : DebugTab
     private readonly LanguageProvider _languageProvider;
     private readonly TypeService _typeService;
     private readonly DebugRenderer _debugRenderer;
-    private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly PinnedInstancesService _pinnedInstances;
     private readonly WindowManager _windowManager;
     private readonly NavigationService _navigationService;
@@ -34,7 +33,7 @@ public unsafe partial class AgentsTab : DebugTab
     public override void Draw()
     {
         _agents ??= typeof(AgentAttribute).Assembly.GetTypes()
-            .Where(t => t.GetCustomAttribute<AgentAttribute>() != null)
+            .Where(t => Attribute.IsDefined(t, typeof(AgentAttribute)))
             .ToImmutableSortedDictionary(
                 type => type.GetCustomAttribute<AgentAttribute>()!.Id,
                 type => ((Pointer<AgentInterface>)AgentModule.Instance()->GetAgentByInternalId(type.GetCustomAttribute<AgentAttribute>()!.Id), type));
@@ -97,7 +96,7 @@ public unsafe partial class AgentsTab : DebugTab
                     _selectedAgentId = agentId;
                 }
             }
-            _imGuiContextMenu.Draw($"ContextMenuAgent{i}", builder =>
+            ImGuiContextMenu.Draw($"ContextMenuAgent{i}", builder =>
             {
                 var agentType = _typeService.GetAgentType(agentId);
                 var isPinned = _pinnedInstances.Contains(agentType);
@@ -116,9 +115,15 @@ public unsafe partial class AgentsTab : DebugTab
 
                 builder.Add(new ImGuiContextMenuEntry()
                 {
+                    Label = _textService.Translate("ContextMenu.GoToAddressInspector"),
+                    ClickCallback = () => _navigationService.NavigateTo(new AddressInspectorNavigation((nint)agent.Value, agentType != typeof(AgentInterface) ? (uint)agentType.SizeOf() : 0))
+                });
+
+                builder.Add(new ImGuiContextMenuEntry()
+                {
                     Visible = !isPinned,
                     Label = _textService.Translate("ContextMenu.PinnedInstances.Pin"),
-                    ClickCallback = () => _pinnedInstances.Add((nint)agent.Value, agentType)
+                    ClickCallback = () => _pinnedInstances.Add(agentType)
                 });
 
                 builder.Add(new ImGuiContextMenuEntry()
@@ -152,7 +157,7 @@ public unsafe partial class AgentsTab : DebugTab
     private (string, bool) GetAgentName(AgentId agentId)
     {
         var name = Enum.GetName(agentId);
-        if (!string.IsNullOrEmpty(name) && !name.StartsWith("Unk"))
+        if (!string.IsNullOrEmpty(name) && !name.StartsWith("Unk", StringComparison.Ordinal))
             return (name, false);
 
         if (TryGetAddon<AtkUnitBase>(agentId, out var addon) && !string.IsNullOrEmpty(addon->NameString))
@@ -188,7 +193,7 @@ public unsafe partial class AgentsTab : DebugTab
                 {
                     Visible = !isPinned,
                     Label = _textService.Translate("ContextMenu.PinnedInstances.Pin"),
-                    ClickCallback = () => _pinnedInstances.Add((nint)agent, agentType)
+                    ClickCallback = () => _pinnedInstances.Add(agentType)
                 });
 
                 builder.Add(new ImGuiContextMenuEntry()

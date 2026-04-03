@@ -3,6 +3,8 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
+using ContentsNoteSheet = Lumina.Excel.Sheets.ContentsNote;
+using InstanceContentSheet = Lumina.Excel.Sheets.InstanceContent;
 
 namespace HaselDebug.Tabs;
 
@@ -148,6 +150,26 @@ public unsafe partial class UnlockSpanLengthTestTab : DebugTab
             PlayerState.Instance()->UnlockedOrchestrionRollsBitArray,
             _excelService.GetRowCount<Orchestrion>()));
 
+        _bitArrays.Add(new BitArrayRecord(
+            "PlayerState.CompletedBeginnerTrainingBitArray",
+            PlayerState.Instance()->CompletedBeginnerTrainingBitArray,
+            _excelService.GetSheet<Tutorial>().Max(row => Math.Max(Math.Max(row.Unknown1, row.Unknown2), row.Unknown3)) - 1));
+
+        _bitArrays.Add(new BitArrayRecord(
+            "PlayerState.CompletedMaskedCarnivaleBitArray",
+            PlayerState.Instance()->CompletedMaskedCarnivaleBitArray,
+            (int)_excelService.GetSheet<InstanceContentSheet>().Where(row => row.InstanceContentType.RowId == 13).Max(row => row.RowId - 35000)));
+
+        _bitArrays.Add(new BitArrayRecord(
+            "PlayerState.CompletedVVDNotebookContentsBitArray",
+            PlayerState.Instance()->CompletedVVDNotebookContentsBitArray,
+            _excelService.GetRowCount<VVDNotebookContents>() - 1));
+
+        // _bitArrays.Add(new BitArrayRecord(
+        //     "PlayerState.UnlockedRaidsBitArray",
+        //     PlayerState.Instance()->UnlockedRaidsBitArray,
+        //     (int)_excelService.GetSheet<InstanceContentSheet>().Where(row => row.RowId is > 30000 and < 35000).Max(row => row.RowId - 30000))); // they reseve more space
+
         // _bitfields.Add(new BitfieldRecord(
         //    "PlayerState.UnlockedFramersKits",
         //    PlayerState->UnlockedFramersKitsBitArray,
@@ -179,6 +201,11 @@ public unsafe partial class UnlockSpanLengthTestTab : DebugTab
             _excelService.GetRowCount<ChocoboTaxiStand>()));
 
         _bitArrays.Add(new BitArrayRecord(
+            "UIState.BeatenTripleTriadResidents",
+            UIState.Instance()->BeatenTripleTriadResidentsBitArray,
+            _excelService.GetSheet<TripleTriadResident>().Where(row => row.Order != ushort.MaxValue).Max(row => row.Order)));
+
+        _bitArrays.Add(new BitArrayRecord(
             "UIState.SeenCutscenes",
             UIState.Instance()->SeenCutscenesBitArray,
             _excelService.GetSheet<CutsceneWorkIndex>().Max(row => row.WorkIndex)));
@@ -187,6 +214,11 @@ public unsafe partial class UnlockSpanLengthTestTab : DebugTab
             "UIState.UnlockedTripleTriadCards",
             UIState.Instance()->UnlockedTripleTriadCardsBitArray,
             _excelService.GetRowCount<TripleTriadCard>()));
+
+        _bitArrays.Add(new BitArrayRecord(
+            "UIState.ContentsNote.CompletionFlags",
+            UIState.Instance()->ContentsNote.CompletionFlagsBitArray,
+            _excelService.GetRowCount<ContentsNoteSheet>()));
         /*
         _bitArrays.Add(new BitArrayRecord(
             "QuestManager.CompletedQuests",

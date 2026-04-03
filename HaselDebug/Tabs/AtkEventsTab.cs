@@ -1,5 +1,6 @@
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Abstracts;
+using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
 using HaselDebug.Utils;
@@ -17,12 +18,16 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
 
     public void Dispose()
     {
+        _dispatchEventHook?.Dispose();
+        Clear();
+    }
+
+    private void Clear()
+    {
         foreach (var e in _events)
             Marshal.FreeHGlobal(e.Item2);
 
         _events.Clear();
-
-        _dispatchEventHook?.Dispose();
     }
 
     private bool DispatchEventDetour(AtkEventDispatcher* thisPtr, AtkEventDispatcher.Event* evt)
@@ -37,7 +42,9 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
             AtkEventType.FocusStop or
             AtkEventType.WindowRollOver or
             AtkEventType.WindowRollOut or
-            AtkEventType.TimerTick or (AtkEventType)74 or (AtkEventType)79))
+            AtkEventType.TimerTick or
+            AtkEventType.TimelineActiveLabelChanged or
+            (AtkEventType)79))
         {
             var ptr = (AtkEventDispatcher.Event*)Marshal.AllocHGlobal(sizeof(AtkEventDispatcher.Event));
             *ptr = *evt;
@@ -64,7 +71,8 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Clear")) _events.Clear();
+        if (ImGui.Button("Clear"))
+            Clear();
 
         using var table = ImRaii.Table("EventTable"u8, 3, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
         if (!table) return;
@@ -88,35 +96,8 @@ public unsafe partial class AtkEventsTab : DebugTab, IDisposable
             ImGui.Text(eventType.ToString() + (Enum.GetName(eventType) != null ? $" ({(int)eventType})" : string.Empty));
 
             ImGui.TableNextColumn();
-
-            if ((int)eventType is >= (int)AtkEventType.MouseDown and <= (int)AtkEventType.MouseDoubleClick)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkMouseData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else if ((int)eventType is >= (int)AtkEventType.InputReceived and <= (int)AtkEventType.InputNavigation)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkInputData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else if ((int)eventType is >= (int)AtkEventType.ListItemRollOver and <= (int)AtkEventType.ListItemSelect)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkListItemData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else if ((int)eventType is >= (int)AtkEventType.DragDropBegin and <= (int)AtkEventType.DragDropClick)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkDragDropData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else if (eventType == AtkEventType.ChildAddonAttached)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData.AtkAddonControlData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else if ((int)eventType is >= (int)AtkEventType.LinkMouseClick and <= (int)AtkEventType.LinkMouseOut)
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(LinkData), new NodeOptions() { AddressPath = new(i) });
-            }
-            else
-            {
-                _debugRenderer.DrawPointerType(evt + 0x8, typeof(AtkEventData), new NodeOptions() { AddressPath = new(i) });
-            }
+            var type = eventType.GetAtkEventDataType();
+            _debugRenderer.DrawPointerType((void*)(evt + 0x8), type, new NodeOptions() { AddressPath = new(i) });
         }
     }
 }

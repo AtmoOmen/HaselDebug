@@ -1,5 +1,164 @@
 # Changelog
 
+## [1.52.0] (2026-03-30)
+
+- **Added:** A config option to toggle the /xldev menu entry.
+- **Added:** Support for AgentLifecycle vtable replacements. The original vtable address is now resolved. Can be disabled in the plugin configuration.
+- **Added:** Fields of type short, int, ushort or uint and name containing "WorldId" will now additionally display the World name.
+- **Added:** A Party Finder Listing Log tab was added to log incoming CrossRealmListingSegmentPackets.
+- **Updated:** Packet Log tabs are now grouped together.
+- **Updated:** The Chara Select Character List tab was overhauled and is now displayed as table, like in other tabs.
+- **Fixed:** An exception in the BitField renderer when the underlying type is not ulong and shift was held for the hex view.
+- **Updated:** ClientStructs now at [4245e53d](https://github.com/aers/FFXIVClientStructs/tree/4245e53d) ([compare](https://github.com/aers/FFXIVClientStructs/compare/bc101ec2..4245e53d)).
+
+## [1.51.1] (2026-03-13)
+
+- **Fixed:** NodeOptions were using `default`, causing properties not to be initialized.
+- **Updated:** ClientStructs now at [bc101ec2](https://github.com/aers/FFXIVClientStructs/tree/bc101ec2) ([compare](https://github.com/aers/FFXIVClientStructs/compare/1757d8f3..bc101ec2)).
+
+## [1.51.0] (2026-03-11)
+
+- **Added:** The Addon Inspector now has an "Observe Events" button on addons, which opens a window to log ReceiveEvent calls.
+- **Fixed:** Only one field at an offset were shown. I forgot unions existed.
+- **Updated:** Handler names in the Atk Handler Calls tab were updated.
+- **Updated:** ClientStructs now at [1757d8f3](https://github.com/aers/FFXIVClientStructs/tree/1757d8f3) ([compare](https://github.com/aers/FFXIVClientStructs/compare/008914bf..1757d8f3)).
+
+## [1.50.0] (2026-03-01)
+
+- **Added:** A LogMessage Log tab that lists all dispatched IChatGui.LogMessage events.
+- **Added:** A new Sound Manager tab for playing around with sounds.
+- **Added:** Highlighting a positional SoundData entry will draw a line to its position.
+- **Updated:** ClientStructs now at [008914bf](https://github.com/aers/FFXIVClientStructs/tree/008914bf) ([compare](https://github.com/aers/FFXIVClientStructs/compare/302aacc9..008914bf)).
+
+## [1.49.0] (2026-02-14)
+
+- **Added:** Bit fields are now rendered.
+- **Added:** Private/internal fields from parent structs (that the inheritance generator doesn't copy) are now rendered.
+- **Updated:** ClientStructs now at [302aacc9](https://github.com/aers/FFXIVClientStructs/tree/302aacc9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/a97e9f89..302aacc9)).
+
+## [1.48.1] (2026-02-10)
+
+- **Updated:** ClientStructs now at [a97e9f89](https://github.com/aers/FFXIVClientStructs/tree/a97e9f89) ([compare](https://github.com/aers/FFXIVClientStructs/compare/ba66cafa..a97e9f89)).
+
+## [1.48.0] (2026-02-10)
+
+- **Updated:** The Inventory Operation tab now additionally tracks the following packet handlers:
+  - HandleInventoryItemPacket
+  - HandleInventoryItemUpdatePacket
+  - HandleInventoryItemCurrencyPacket
+  - HandleInventoryItemSymbolicPacket
+- **Fixed:** The Instance tab wouldn't show the structs name when the address was null.
+- **Updated:** ClientStructs now at [ba66cafa](https://github.com/aers/FFXIVClientStructs/tree/ba66cafa) ([compare](https://github.com/aers/FFXIVClientStructs/compare/c1430546..ba66cafa)).
+
+## [1.47.2] (2026-02-06)
+
+- **Updated:** ClientStructs now at [c1430546](https://github.com/aers/FFXIVClientStructs/tree/c1430546) ([compare](https://github.com/aers/FFXIVClientStructs/compare/cb1f076a..c1430546)).
+
+## [1.47.1] (2026-02-01)
+
+- **Fixed:** Instances with a `StaticAddresses` that had `isPointer: true` were incorrectly cached.
+- **Updated:** ClientStructs now at [cb1f076a](https://github.com/aers/FFXIVClientStructs/tree/cb1f076a) ([compare](https://github.com/aers/FFXIVClientStructs/compare/5b9ecbd8..cb1f076a)).
+
+## [1.47.0] (2026-01-28)
+
+- **Changed:** The plugin window now hides itself when picking a node in the Addon Inspector.
+- **Added:** It is now possible to pick nodes in `AtkUnitBase.AdditionalFocusableNodes`, for example the docked detail window in the Mogpendium.
+- **Added:** Added an Actor Control Log tab to log ActorControl packets that the client receives (only non-recorded packets and only stored in memory, so don't forget to disable it again).
+
+## [1.46.0] (2026-01-27)
+
+- **Changed:** Renamed Pointer Inspector to Address Inspector.
+- **Added:** Right-clicking on a nodes/components address, addon or agent now opens a context menu to open the address in the Address Inspector.
+- **Added:** Spawn Object Log and Spawn Treasure Log tabs.
+- **Updated:** Excel sheet property names and values are now copyable in the inspector.
+- **Updated:** The SeString preview is now copyable in the inspector.
+- **Updated:** The SeString preview now shows the macro string when holding shift, also letting you copy it.
+- **Fixed:** Opening SeStrings in Excel sheets didn't work properly.
+- **Fixed:** In the Address Inspector, some FixedArrays weren't displayed and pointers of type `Pointer<T>` are now unboxed.
+- **Updated:** ClientStructs now at [5b9ecbd8](https://github.com/aers/FFXIVClientStructs/tree/5b9ecbd8) ([compare](https://github.com/aers/FFXIVClientStructs/compare/2eff417b..5b9ecbd8)).
+
+## [1.45.3] (2026-01-17)
+
+- **Fixed:** Using ReadProcessMemory in ProcessInfoService again, so it fails safely when reading module data from another thread.
+- **Updated:** ClientStructs now at [2eff417b](https://github.com/aers/FFXIVClientStructs/tree/2eff417b) ([compare](https://github.com/aers/FFXIVClientStructs/compare/2858c274..2eff417b)).
+
+## [1.45.2] (2026-01-15)
+
+- **Fixed:** Reworked ProcessInfoService. More efficient and safer (hopefully).
+
+## [1.45.1] (2026-01-14)
+
+- **Fixed:** The Addon Inspector node picker wouldn't draw.
+
+## [1.45.0] (2026-01-13)
+
+- **Added:** A Spawn Npc Log tab, to log `SpawnNpcPacket`s that the client receives (only stored in memory, so don't forget to disable it again).
+- **Changed:** The Object Tables were simplified.
+  - Columns:
+    - ObjectId column was removed, as it is the same as EntityId.
+    - ObjectKind column was merged into the Name column as prefix.
+    - EventHandler column was removed, because it was annoyingly big.
+  - Context Menu:
+    - New context menu entries to open the struct in a new window, to copy the name or address.
+    - Existing context menu entries (Enable/Disable Draw) were removed, because the game would update the flag anyways.
+- **Changed:** The export button in the Config tab now renames the second `LockonDefaultZoom` (index appended with `_186`) to the intended `LockonDefaultDistance`.
+- **Changed:** The plugin no longer scans for valid memory sections when the window is closed. Also the code was updated to no longer use ReadProcessMemory.
+- **Updated:** The Orchestrion unlock tab can now preview tracks, as long as you have unlocked them.
+- **Updated:** ClientStructs now at [2858c274](https://github.com/aers/FFXIVClientStructs/tree/2858c274) ([compare](https://github.com/aers/FFXIVClientStructs/compare/14fcd3fc..2858c274)).
+
+## [1.44.1] (2026-01-09)
+
+- **Fixed:** A possible crash in the Agent Map Event Markers tab due to stale pointers.
+- **Updated:** ClientStructs now at [14fcd3fc](https://github.com/aers/FFXIVClientStructs/tree/14fcd3fc) ([compare](https://github.com/aers/FFXIVClientStructs/compare/e1e99cf..14fcd3fc)).
+
+## [1.44.0] (2026-01-04)
+
+- **Added:** The Addon Inspector now displays the class name of KTK nodes. (Thanks to @MidoriKami)
+  - A config option "Better readable KTK Node Names" allows to toggle whether the original class name should be preserved ('ExampleName'), or if it should split on a capital letter ('Example Name', default).
+- **Changed:** Types are now loaded asynchronously when the plugin loads. This should fix an issue when the "Auto-open HaselDebug" option was enabled, where the last selected tab wasn't restored due to instances not being loaded.
+
+## [1.43.0] (2026-01-03)
+
+Happy new year!
+
+- **Changed:** Addons starting with `KTK_Overlay` are now sorted to the bottom of the node picker list.
+- **Updated:** The node list search in the Addon Inspector was slightly improved, so that you can specify more precisely what to search.  
+  Supported tags are:
+
+  - Node ids with `id:15` or just `#15`
+  - Node types with `type:res`
+  - Node addresses with `addr:0x28EFEDA19F0`, `addr:2813184317936`
+  - ImageNode IconId with `img:123456`
+  - ImageNode Filename with `img:ui/uld/ChatLog_hr1.tex`
+  - ImageNode PartId with `part:15`
+  - TextNode NodeText with `text:Title` or with space `text:"Free Company"`
+
+  It's possible to exclude these tags by prefixing them with a `-`.  
+  Naturally these are mixable with each other and still work without prefix.
+- **Updated:** Holding shift while the node picker is active will now display nodes inside components.
+- **Updated:** The struct displayed in the Atk Event tab is now automatically changed for further events:
+  - `AtkEventType.ChildAddonAttached` uses `AtkEventData.AtkAddonControlData`
+  - `AtkEventType.ValueUpdate` uses `AtkEventData.AtkValueData`
+  - `AtkEventType.TimelineActiveLabelChanged` uses `AtkEventData.AtkTimelineData`
+- **Fixed:** The highlight rectangle when hovering a node did not take the game windows position into account when playing in windowed mode.
+
+## [1.42.7] (2025-12-28)
+
+- **Fixed:** Possible crash when hovering invalid GameObjects. Before grabbing its position for the highlight-line, it will check if the object is listed in the object table (GameObjectManager).
+
+## [1.42.6] (2025-12-27)
+
+- **Added:** Texture TreeNodes now have a context menu to copy path, size and format.
+- **Added:** The CurrencyManager tab now has xmldocs copy buttons for the different item buckets.
+- **Added:** A part list selector for UldAssets, similar to Dalamuds Addon Inspector v2.
+- **Fixed:** Node popouts crashing the game due to empty window name.
+- **Updated:** ClientStructs now at [b71506d2](https://github.com/aers/FFXIVClientStructs/tree/b71506d2) ([compare](https://github.com/aers/FFXIVClientStructs/compare/f0e6cae9..b71506d2)).
+
+## [1.42.5] (2025-12-25)
+
+- **Fixed:** Popout window titles being broken, causing exceptions when opening more windows of the same type.
+- **Updated:** ClientStructs now at [f0e6cae9](https://github.com/aers/FFXIVClientStructs/tree/f0e6cae9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/f27d2f6f..f0e6cae9)).
+
 ## [1.42.4] (2025-12-20)
 
 - **Fixed:** The Outfits tab now pulls data directly from MirageManager instead of the ItemFinderModule when it's loaded, because the data in ItemFinderModule is out of date when you're not actively running item searches.
@@ -677,7 +836,28 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.4...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.52.0...main
+[1.52.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.51.1...v1.52.0
+[1.51.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.51.0...v1.51.1
+[1.51.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.50.0...v1.51.0
+[1.50.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.49.0...v1.50.0
+[1.49.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.48.1...v1.49.0
+[1.48.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.48.0...v1.48.1
+[1.48.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.47.2...v1.48.0
+[1.47.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.47.1...v1.47.2
+[1.47.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.47.0...v1.47.1
+[1.47.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.46.0...v1.47.0
+[1.46.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.45.3...v1.46.0
+[1.45.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.45.2...v1.45.3
+[1.45.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.45.1...v1.45.2
+[1.45.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.45.0...v1.45.1
+[1.45.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.44.1...v1.45.0
+[1.44.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.44.0...v1.44.1
+[1.44.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.43.0...v1.44.0
+[1.43.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.7...v1.43.0
+[1.42.7]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.6...v1.42.7
+[1.42.6]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.5...v1.42.6
+[1.42.5]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.4...v1.42.5
 [1.42.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.3...v1.42.4
 [1.42.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.2...v1.42.3
 [1.42.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.42.1...v1.42.2

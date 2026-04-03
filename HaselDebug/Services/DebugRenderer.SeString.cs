@@ -184,7 +184,7 @@ public unsafe partial class DebugRenderer
             using (ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector(), nodeOptions.RenderSeString))
                 clicked = ImGui.Selectable(text + nodeOptions.GetKey("SeStringSelectable"));
 
-            _imGuiContextMenu.Draw(nodeOptions.GetKey("SeStringSelectableContextMenu"), (builder) =>
+            ImGuiContextMenu.Draw(nodeOptions.GetKey("SeStringSelectableContextMenu"), (builder) =>
             {
                 builder.Add(new ImGuiContextMenuEntry()
                 {
@@ -199,7 +199,7 @@ public unsafe partial class DebugRenderer
             var str = new ReadOnlySeString(rosss.Data.ToArray());
             var windowTitle = nodeOptions.Title ?? (nodeOptions.SeStringTitle ?? str).ToMacroString();
             var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
-            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _addonObserver, _serviceProvider)
+            _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _serviceProvider)
             {
                 String = str,
                 Language = language,

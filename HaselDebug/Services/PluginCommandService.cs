@@ -1,30 +1,31 @@
 using System.Threading;
 using System.Threading.Tasks;
-using HaselCommon.Commands;
+using HaselCommon.Services.Commands;
 using HaselDebug.Config;
 using HaselDebug.Windows;
 
 namespace HaselDebug.Services;
 
 [RegisterSingleton<IHostedService>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public partial class CommandManager : IHostedService
+public partial class PluginCommandService : IHostedService
 {
     private readonly IDalamudPluginInterface _pluginInterface;
-    private readonly PluginConfig _pluginConfig;
     private readonly WindowManager _windowManager;
     private readonly CommandService _commandService;
-    private CommandHandler? _commandHandler;
+    private readonly PluginWindow _pluginWindow; // requesting for auto-open
+    private readonly PluginConfig _config;
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (_pluginConfig.AutoOpenPluginWindow)
-            _windowManager.CreateOrOpen<PluginWindow>();
-
         _pluginInterface.UiBuilder.Draw += DrawMainMenuItem;
         _pluginInterface.UiBuilder.OpenMainUi += TogglePluginWindow;
         _pluginInterface.UiBuilder.OpenConfigUi += ToggleConfigWindow;
 
-        _commandHandler = _commandService.Register(OnHaselDebugCommand, true);
+        _commandService.AddCommand("haseldebug", cmd => cmd
+            .WithHelpTextKey("HaselDebug.CommandHandlerHelpMessage")
+            .WithHandler(OnHaselDebugCommand)
+            .AddSubcommand("config", ctx => ctx
+                .WithHandler(OnConfigCommand)));
 
         return Task.CompletedTask;
     }
@@ -35,15 +36,12 @@ public partial class CommandManager : IHostedService
         _pluginInterface.UiBuilder.OpenMainUi -= TogglePluginWindow;
         _pluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigWindow;
 
-        _commandHandler?.Dispose();
-        _commandHandler = null;
-
         return Task.CompletedTask;
     }
 
     private void DrawMainMenuItem()
     {
-        if (_pluginInterface.IsDevMenuOpen && ImGui.BeginMainMenuBar())
+        if (_config.ShowInDevMenu && _pluginInterface.IsDevMenuOpen && ImGui.BeginMainMenuBar())
         {
             if (ImGui.MenuItem("HaselDebug"))
             {
@@ -64,19 +62,13 @@ public partial class CommandManager : IHostedService
         _windowManager.CreateOrToggle<ConfigWindow>();
     }
 
-    [CommandHandler("/haseldebug", "HaselDebug.CommandHandlerHelpMessage")]
-    private void OnHaselDebugCommand(string command, string arguments)
+    private void OnHaselDebugCommand(CommandContext ctx)
     {
-        switch (arguments.Trim().ToLowerInvariant())
-        {
-            case "conf":
-            case "config":
-                ToggleConfigWindow();
-                break;
+        TogglePluginWindow();
+    }
 
-            default:
-                TogglePluginWindow();
-                break;
-        }
+    private void OnConfigCommand(CommandContext ctx)
+    {
+        ToggleConfigWindow();
     }
 }

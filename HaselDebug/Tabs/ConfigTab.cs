@@ -112,6 +112,8 @@ public unsafe partial class ConfigTab : DebugTab
                 continue;
 
             var optionName = Encoding.UTF8.GetString(MemoryMarshal.CreateReadOnlySpanFromNullTerminated(option->Name));
+            if (optionName == "LockonDefaultZoom_186")
+                optionName = "LockonDefaultDistance";
             if (!optionName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
                 continue;
 
@@ -212,7 +214,7 @@ public unsafe partial class ConfigTab : DebugTab
 
     private void ProcessConfigBase(StringBuilder sb, Dictionary<int, string> dict, ref ConfigBase configBase, string configName)
     {
-        sb.AppendLine("");
+        sb.AppendLine();
         sb.AppendLine($"    #region {configName}");
 
         var configEntry = configBase.ConfigEntry;
@@ -225,6 +227,8 @@ public unsafe partial class ConfigTab : DebugTab
                 continue;
 
             var name = configEntry->Name.ToString();
+            if (name == "LockonDefaultZoom_186")
+                name = "LockonDefaultDistance";
 
             if (dict.ContainsValue(name))
                 name = $"{name}_{i}";
@@ -254,10 +258,10 @@ public unsafe partial class ConfigTab : DebugTab
     {
         var dict = new Dictionary<int, string>();
 
-        sb.AppendLine("");
+        sb.AppendLine();
         sb.AppendLine($"public enum {configName}ConfigOption {{");
 
-        var usedNames = new HashSet<string>();
+        var usedNames = new HashSet<string>(StringComparer.Ordinal);
 
         var configEntry = configBase.ConfigEntry;
         for (var i = 0; i < configBase.ConfigCount; i++, configEntry++)
@@ -271,6 +275,9 @@ public unsafe partial class ConfigTab : DebugTab
             var name = configEntry->Name != null
                 ? configEntry->Name.ToString()
                 : string.Empty;
+
+            if (name == "LockonDefaultZoom_186")
+                name = "LockonDefaultDistance";
 
             // Dalamud doesn't support multiple options with the same name
             if (!usedNames.Add(name))

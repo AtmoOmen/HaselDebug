@@ -1,13 +1,12 @@
 using System.Reflection;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using HaselDebug.Extensions;
-using HaselDebug.Service;
 
 namespace HaselDebug.Utils;
 
-public static unsafe class DebugUtils
+// Note: these are globals!
+
+public static class DebugUtils
 {
+    private static readonly Dictionary<Type, FieldInfo[]> FieldCache = [];
     private static readonly Dictionary<(Type, Type), bool> InheritsCache = [];
 
     public static bool Inherits<T>(Type pointerType) where T : struct
@@ -57,5 +56,43 @@ public static unsafe class DebugUtils
         result = currentType == targetType;
         InheritsCache.TryAdd((pointerType, targetType), result);
         return result;
+    }
+
+    public static FieldInfo[] GetAllInheritedFields(Type type)
+    {
+        if (FieldCache.TryGetValue(type, out var fields))
+            return fields;
+
+        var fieldsByOffsetAndName = new SortedDictionary<(int, string), FieldInfo>();
+
+        void CollectFieldsRecursive(Type currentType)
+        {
+            var fields = currentType
+                .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                .Where(fieldInfo => !fieldInfo.IsLiteral);
+
+            foreach (var field in fields)
+            {
+                if (field.GetCustomAttribute<FieldOffsetAttribute>() is not FieldOffsetAttribute fieldOffsetAttr)
+                    continue;
+
+                fieldsByOffsetAndName.TryAdd((fieldOffsetAttr.Value, field.Name), field);
+            }
+
+            var inheritAttrs = currentType.GetCustomAttributes()
+                .Where(attr => attr.GetType() is var attrType &&
+                               attrType.IsGenericType &&
+                               attrType.GetGenericTypeDefinition() == typeof(InheritsAttribute<>));
+
+            foreach (var attr in inheritAttrs)
+            {
+                var parentType = attr.GetType().GenericTypeArguments[0];
+                CollectFieldsRecursive(parentType);
+            }
+        }
+
+        CollectFieldsRecursive(type);
+
+        return FieldCache[type] = [.. fieldsByOffsetAndName.Values];
     }
 }

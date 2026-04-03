@@ -19,7 +19,7 @@ public unsafe partial class PermissionsTab : DebugTab
     {
         _conditionNames = typeof(Conditions)
             .GetFields(BindingFlags.Instance | BindingFlags.Public)
-            .Where(fi => fi.FieldType == typeof(bool) && fi.GetCustomAttribute<ObsoleteAttribute>() == null)
+            .Where(fi => fi.FieldType == typeof(bool) && !Attribute.IsDefined(fi, typeof(ObsoleteAttribute)))
             .Select(fi => (fi.GetFieldOffset(), fi.Name))
             .DistinctBy(t => t.Item1)
             .ToDictionary();
@@ -36,15 +36,16 @@ public unsafe partial class PermissionsTab : DebugTab
         ImGui.SetNextItemWidth(150);
         ImGui.Combo("##HideSetting", ref _hideSetting, ["Show all", "Hide matching", "Hide non-matching"]);
 
-        var conditions = ConditionEx.Instance();
+        var conditions = Conditions.Instance();
 
-        foreach (var row in _excelService.GetSheet<CustomPermission>())
+        foreach (var row in _excelService.GetSheet<Permission>())
         {
             var hasPermission = conditions->HasPermission(row.RowId);
 
             if (_hideSetting == 1 && hasPermission)
                 continue;
-            else if (_hideSetting == 2 && !hasPermission)
+
+            if (_hideSetting == 2 && !hasPermission)
                 continue;
 
             using var color = ImRaii.PushColor(ImGuiCol.Text, hasPermission ? Color.Green : Color.Red);
@@ -91,7 +92,7 @@ public unsafe partial class PermissionsTab : DebugTab
         }
     }
 
-    private string GetPermissionName(uint rowId)
+    private static string GetPermissionName(uint rowId)
     {
         var name = $"Permission #{rowId}";
 
@@ -103,30 +104,4 @@ public unsafe partial class PermissionsTab : DebugTab
 
         return name;
     }
-}
-
-[GenerateInterop]
-[StructLayout(LayoutKind.Explicit, Size = Conditions.StructSize)]
-public unsafe partial struct ConditionEx
-{
-    public static ConditionEx* Instance() => (ConditionEx*)Conditions.Instance();
-
-    [FieldOffset(0), FixedSizeArray] internal FixedSizeArray112<bool> _flags;
-
-    [MemberFunction("E8 ?? ?? ?? ?? 84 C0 75 ?? 8B FB")]
-    public partial bool HasPermission(uint permissionId, int excludedCondition1 = 0, int excludedCondition2 = 0);
-}
-
-[Sheet("Permission")]
-public readonly unsafe struct CustomPermission(ExcelPage page, uint offset, uint row) : IExcelRow<CustomPermission>
-{
-    public ExcelPage ExcelPage => page;
-    public uint RowOffset => offset;
-    public uint RowId => row;
-
-    public readonly Collection<bool> Conditions => new(page, offset, offset, &ConditionCtor, 112);
-    private static bool ConditionCtor(ExcelPage page, uint parentOffset, uint offset, uint i) => page.ReadBool(offset + i);
-
-    static CustomPermission IExcelRow<CustomPermission>.Create(ExcelPage page, uint offset, uint row) =>
-        new(page, offset, row);
 }

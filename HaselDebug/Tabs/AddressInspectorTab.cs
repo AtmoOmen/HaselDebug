@@ -10,15 +10,16 @@ using Iced.Intel;
 namespace HaselDebug.Tabs;
 
 [RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class PointerInspectorTab : DebugTab
+public unsafe partial class AddressInspectorTab : DebugTab
 {
+    private readonly ILogger<AddressInspectorTab> _logger;
     private readonly DataYmlService _dataYml;
     private readonly TypeService _typeService;
     private readonly DebugRenderer _debugRenderer;
     private readonly ISigScanner _sigScanner;
     private readonly ProcessInfoService _processInfoService;
     private readonly IAddonLifecycle _addonLifecycle;
-    private readonly ILogger<PointerInspectorTab> _logger;
+    private readonly NavigationService _navigationService;
 
     private readonly List<OffsetInfo> _offsetMappings = [];
     private OffsetInfo? _currentStructInfo;
@@ -45,6 +46,21 @@ public unsafe partial class PointerInspectorTab : DebugTab
     public override void Draw()
     {
         _freeMemoryAddress ??= _sigScanner.ScanText("E8 ?? ?? ?? ?? 48 89 5D ?? 48 8B 74 24") - _sigScanner.Module.BaseAddress;
+
+        if (_navigationService.CurrentNavigation is AddressInspectorNavigation navData)
+        {
+            _memoryAddress = navData.Address;
+            _memorySize = navData.Size;
+
+            _addressInput = "0x" + _memoryAddress.ToString("X");
+            _addressSize = "0x" + _memorySize.ToString("X");
+
+            if (_memorySize == 0)
+                FindSize();
+
+            ParsePointer();
+            _navigationService.Reset();
+        }
 
         DrawSearchBox();
 
@@ -129,7 +145,7 @@ public unsafe partial class PointerInspectorTab : DebugTab
                 if (cl == null || cl.VirtualTables == null || cl.VirtualTables.Count == 0)
                     continue;
 
-                if (cl.VirtualTables.First().Address != vtablePtr - _sigScanner.Module.BaseAddress)
+                if (cl.VirtualTables[0].Address != vtablePtr - _sigScanner.Module.BaseAddress)
                     continue;
 
                 _logger.LogDebug("Found struct {name} vtbl at {add:X}", name, vtablePtr);
@@ -146,8 +162,7 @@ public unsafe partial class PointerInspectorTab : DebugTab
 
                 if (csType != null)
                 {
-                    _currentStructFields = [];
-                    AtkDebugRenderer.LoadTypeMapping(_currentStructFields, "", 0, csType);
+                    _currentStructFields = _typeService.GetTypeFields(csType);
                 }
 
                 break;
@@ -195,7 +210,7 @@ public unsafe partial class PointerInspectorTab : DebugTab
                     if (cl == null || cl.VirtualTables == null || cl.VirtualTables.Count == 0)
                         continue;
 
-                    if (cl.VirtualTables.First().Address != virtualTablePointer - _sigScanner.Module.BaseAddress)
+                    if (cl.VirtualTables[0].Address != virtualTablePointer - _sigScanner.Module.BaseAddress)
                         continue;
 
                     _logger.LogDebug("Found {name} vtbl at {add:X}", name, virtualTablePointer);
@@ -216,7 +231,7 @@ public unsafe partial class PointerInspectorTab : DebugTab
         if (T.TryParse(numberString, null, out var parsedNumber))
             return parsedNumber;
 
-        if (T.TryParse(numberString.StartsWith("0x") ? numberString[2..] : numberString, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedHex))
+        if (T.TryParse(numberString.StartsWith("0x", StringComparison.Ordinal) ? numberString[2..] : numberString, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedHex))
             return parsedHex;
 
         return default;
@@ -279,7 +294,7 @@ public unsafe partial class PointerInspectorTab : DebugTab
         if (_typeService.CSTypes == null)
             return null;
 
-        if (!_typeService.CSTypes.TryGetValue("FFXIVClientStructs.FFXIV." + name.Replace("::", "."), out var type))
+        if (!_typeService.CSTypes.TryGetValue("FFXIVClientStructs.FFXIV." + name.Replace("::", ".", StringComparison.Ordinal), out var type))
             return null;
 
         return type;

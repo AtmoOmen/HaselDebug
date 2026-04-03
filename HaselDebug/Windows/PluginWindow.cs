@@ -1,5 +1,6 @@
 using HaselDebug.Config;
 using HaselDebug.Interfaces;
+using HaselDebug.Service;
 using HaselDebug.Services;
 using HaselDebug.Tabs;
 using HaselDebug.Utils;
@@ -15,13 +16,13 @@ public partial class PluginWindow : SimpleWindow
     private readonly WindowManager _windowManager;
     private readonly PluginConfig _pluginConfig;
     private readonly TextService _textService;
-    private readonly AddonObserver _addonObserver;
     private readonly PinnedInstancesService _pinnedInstances;
-    private readonly ImGuiContextMenuService _imGuiContextMenu;
     private readonly DebugRenderer _debugRenderer;
     private readonly ConfigWindow _configWindow;
     private readonly NavigationService _navigationService;
+    private readonly ProcessInfoService _processInfoService;
     private readonly IEnumerable<IDebugTab> _debugTabs;
+    private readonly AtkNodePicker _nodePicker;
 
     private IDebugTab[] _tabs;
     private IDebugTab? _selectedTab;
@@ -54,16 +55,10 @@ public partial class PluginWindow : SimpleWindow
 
         _tabs = [.. _debugTabs
             //.Where(t => !t.GetType().GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition().IsAssignableTo(typeof(ISubTab<>)))) // no sub tabs
-            .OrderBy(t => t.Title)
+            .OrderBy(t => t.Title, StringComparer.Ordinal)
         ];
 
         _pinnedInstances.Loaded += OnPinnedInstancesLoaded;
-    }
-
-    private void OnPinnedInstancesLoaded()
-    {
-        _pinnedInstances.Loaded -= OnPinnedInstancesLoaded;
-        SelectTabWithoutSave(_pluginConfig.LastSelectedTab);
     }
 
     public override void Dispose()
@@ -71,18 +66,37 @@ public partial class PluginWindow : SimpleWindow
         foreach (var tab in _tabs.OfType<IDisposable>())
             tab.Dispose();
 
+        _processInfoService.Enabled = false;
+
         base.Dispose();
+    }
+
+    private void OnPinnedInstancesLoaded()
+    {
+        _pinnedInstances.Loaded -= OnPinnedInstancesLoaded;
+
+        SelectTabWithoutSave(_pluginConfig.LastSelectedTab);
+
+        if (_pluginConfig.AutoOpenPluginWindow)
+            _windowManager.CreateOrOpen<PluginWindow>();
     }
 
     public override void OnOpen()
     {
         base.OnOpen();
         _debugRenderer.ParseCSDocs();
+        _processInfoService.Enabled = true;
+    }
+
+    public override void OnClose()
+    {
+        base.OnClose();
+        _processInfoService.Enabled = false;
     }
 
     public override bool DrawConditions()
     {
-        return true;
+        return !_nodePicker.ShowPicker;
     }
 
     public override void Draw()
@@ -105,6 +119,9 @@ public partial class PluginWindow : SimpleWindow
                 break;
             case AgentNavigation when _selectedTab is not AgentsTab:
                 SelectTab(nameof(AgentsTab));
+                break;
+            case AddressInspectorNavigation when _selectedTab is not AddressInspectorTab:
+                SelectTab(nameof(AddressInspectorTab));
                 break;
         }
     }
@@ -136,13 +153,13 @@ public partial class PluginWindow : SimpleWindow
 
                 var selected = ImGui.Selectable($"{tab.Title}##Selectable_{tab.InternalName}", _selectedTab == tab);
 
-                _imGuiContextMenu.Draw($"{tab.InternalName}ContextMenu", builder =>
+                ImGuiContextMenu.Draw($"{tab.InternalName}ContextMenu", builder =>
                 {
                     builder.Add(new ImGuiContextMenuEntry()
                     {
                         Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                         Label = _textService.Translate("ContextMenu.TabPopout"),
-                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, tab))
+                        ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, tab))
                     });
 
                     builder.Add(new ImGuiContextMenuEntry()
@@ -184,13 +201,13 @@ public partial class PluginWindow : SimpleWindow
 
             disabled.Pop();
 
-            _imGuiContextMenu.Draw($"{tab.InternalName}ContextMenu", builder =>
+            ImGuiContextMenu.Draw($"{tab.InternalName}ContextMenu", builder =>
             {
                 builder.Add(new ImGuiContextMenuEntry()
                 {
                     Visible = tab.CanPopOut && !_windowManager.Contains(win => win.WindowName == tab.Title),
                     Label = _textService.Translate("ContextMenu.TabPopout"),
-                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, tab))
+                    ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, tab))
                 });
             });
 
@@ -211,13 +228,13 @@ public partial class PluginWindow : SimpleWindow
 
                     subTabDisabled.Pop();
 
-                    _imGuiContextMenu.Draw($"{subTab.InternalName}ContextMenu", builder =>
+                    ImGuiContextMenu.Draw($"{subTab.InternalName}ContextMenu", builder =>
                     {
                         builder.Add(new ImGuiContextMenuEntry()
                         {
                             Visible = subTab.CanPopOut && !_windowManager.Contains(win => win.WindowName == subTab.Title),
                             Label = _textService.Translate("ContextMenu.TabPopout"),
-                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, _addonObserver, subTab))
+                            ClickCallback = () => _windowManager.Open(new TabPopoutWindow(_windowManager, _textService, subTab))
                         });
                     });
 
