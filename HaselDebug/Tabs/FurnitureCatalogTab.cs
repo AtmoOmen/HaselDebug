@@ -9,7 +9,6 @@ using HaselDebug.Abstracts;
 using HaselDebug.Extensions;
 using HaselDebug.Interfaces;
 using HaselDebug.Utils;
-using HaselDebug.Windows;
 using HousingFurniture = Lumina.Excel.Sheets.HousingFurniture;
 
 namespace HaselDebug.Tabs;
@@ -69,7 +68,7 @@ public unsafe partial class FurnitureCatalogTab : DebugTab
             var text = _textService.Translate("FurnitureCatalogTab.AlertText");
             var buttonText = _textService.Translate("FurnitureCatalogTab.OpenButton.Label", _textService.GetAddonText(isInside ? 6263u : 6264));
             var style = ImGui.GetStyle();
-            var iconSize = ImGui.GetTextLineHeight();
+            var iconSize = ImStyle.TextLineHeight;
             var outerSize = new Vector2(ImGui.GetContentRegionMax().X - style.FramePadding.X * 2, 0);
             var innerWidth = outerSize.X
                 - iconSize
@@ -81,8 +80,8 @@ public unsafe partial class FurnitureCatalogTab : DebugTab
                 + (showButton // line 2: button
                     ? (style.ItemSpacing.Y + ImGuiHelpers.GetButtonSize(buttonText).Y) // spacing between text and button + button
                     : 0);
-
-            using (ImGuiUtilsEx.AlertBox("InfoBox", Color.FromHSL(190, 1f, 0.5f), outerSize))
+            
+            using (ImGuiUtilsEx.AlertBox("InfoBox", Color.FromHSV(0.527f, 1, 1), outerSize))
             {
                 if (ServiceLocator.TryGetService<ITextureProvider>(out var textureProvider))
                     textureProvider.DrawIcon(60071, iconSize);
@@ -96,7 +95,8 @@ public unsafe partial class FurnitureCatalogTab : DebugTab
                     var agent = AgentModule.Instance()->GetAgentByInternalId(AgentId.Housing);
                     var returnValue = stackalloc AtkValue[1];
                     var values = stackalloc AtkValue[1];
-                    values->SetInt(4);
+                    values[0].Type = AtkValueType.Int;
+                    values[0].Int = 4;
                     agent->ReceiveEvent(returnValue, values, 1, 1);
                 }
             }
@@ -210,8 +210,6 @@ public unsafe partial class FurnitureCatalogTab : DebugTab
         public partial class RowIdColumn : ColumnNumber<FurnitureCatalogItem>
         {
             private readonly IServiceProvider _serviceProvider;
-            private readonly WindowManager _windowManager;
-            private readonly TextService _textService;
             private readonly LanguageProvider _languageProvider;
 
             [AutoPostConstruct]
@@ -231,8 +229,8 @@ public unsafe partial class FurnitureCatalogTab : DebugTab
             {
                 if (ImGui.Selectable(ToName(row)))
                 {
-                    var title = $"{row.SheetType.Name}#{row.RowId} ({_languageProvider.ClientLanguage})";
-                    _windowManager.CreateOrOpen(title, () => ActivatorUtilities.CreateInstance<ExcelRowTab>(_serviceProvider, row.SheetType, row.RowId, _languageProvider.ClientLanguage, title));
+                    new ExcelRowIdentifier(row.SheetType, row.RowId, _languageProvider.ClientLanguage)
+                        .OpenWindow(_serviceProvider);
                 }
 
                 ImGuiContextMenu.Draw($"{row.SheetType.Name}{row.RowId}RowIdContextMenu", builder =>

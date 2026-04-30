@@ -4,18 +4,17 @@ using HaselDebug.Utils;
 namespace HaselDebug.Windows;
 
 [AutoConstruct]
-public partial class ExcelRowTab : SimpleWindow
+public partial class ExcelRowWindow : SimpleWindow
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly Type _rowType;
-    private readonly uint _rowId;
-    private readonly ClientLanguage _language;
+    private readonly ExcelRowIdentifier _identifier;
     private DebugRenderer _debugRenderer;
 
     [AutoPostConstruct]
     private void Initialize(string windowName)
     {
         _debugRenderer = _serviceProvider.GetRequiredService<DebugRenderer>();
+        WindowNameKey = string.Empty;
         WindowName = windowName;
     }
 
@@ -45,6 +44,20 @@ public partial class ExcelRowTab : SimpleWindow
 
     public override void Draw()
     {
-        _debugRenderer.DrawExdRow(_rowType, _rowId, 0, new NodeOptions() { DefaultOpen = true, Language = _language });
+        if (_identifier.IsSubrowSheet)
+        {
+            if (_identifier.SubrowId.HasValue)
+            {
+                _debugRenderer.DrawExdSubrow(_identifier.SheetType, _identifier.RowId, _identifier.SubrowId.Value, 0, new NodeOptions() { DefaultOpen = true, Language = _identifier.Language });
+            }
+            else
+            {
+                _debugRenderer.DrawExdSubrows(_identifier.SheetType, _identifier.RowId, 0, new NodeOptions() { DefaultOpen = true, Language = _identifier.Language });
+            }
+        }
+        else
+        {
+            _debugRenderer.DrawExdRow(_identifier.SheetType, _identifier.RowId, 0, new NodeOptions() { DefaultOpen = true, Language = _identifier.Language });
+        }
     }
 }

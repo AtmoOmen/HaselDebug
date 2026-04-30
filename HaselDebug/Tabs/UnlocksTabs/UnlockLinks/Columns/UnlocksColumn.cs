@@ -1,6 +1,5 @@
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Extensions;
-using HaselDebug.Windows;
 
 namespace HaselDebug.Tabs.UnlocksTabs.UnlockLinks.Columns;
 
@@ -8,9 +7,6 @@ namespace HaselDebug.Tabs.UnlocksTabs.UnlockLinks.Columns;
 public partial class UnlocksColumn : ColumnString<UnlockLinkEntry>
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly WindowManager _windowManager;
-    private readonly TextService _textService;
-    private readonly LanguageProvider _languageProvider;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -19,21 +15,26 @@ public partial class UnlocksColumn : ColumnString<UnlockLinkEntry>
     }
 
     public override string ToName(UnlockLinkEntry entry)
-        => string.Join(' ', entry.Unlocks.Select(unlock => $"{unlock.RowType.Name}#{unlock.RowId}"));
+        => string.Join(' ', entry.Unlocks.Select(unlock => unlock.ExcelRowIdentifier?.ToString() ?? string.Empty));
 
-    public override unsafe void DrawColumn(UnlockLinkEntry entry)
+    public override void DrawColumn(UnlockLinkEntry entry)
     {
         foreach (var unlock in entry.Unlocks)
         {
-            if (ImGui.Selectable($"{unlock.RowType.Name}#{unlock.RowId}{unlock.ExtraSheetText}"))
+            if (unlock.ExcelRowIdentifier == null)
             {
-                var title = $"{unlock.RowType.Name}#{unlock.RowId} ({_languageProvider.ClientLanguage})";
-                _windowManager.CreateOrOpen(title, () => new ExcelRowTab(_windowManager, _textService, _serviceProvider, unlock.RowType, unlock.RowId, _languageProvider.ClientLanguage, title));
+                ImGui.Text("");
+                continue;
             }
 
-            ImGuiContextMenu.Draw($"Entry{entry.Index}_{unlock.RowType.Name}{unlock.RowId}_RowIdContextMenu", builder =>
+            if (ImGui.Selectable($"{unlock.ExcelRowIdentifier}{unlock.ExtraSheetText}"))
             {
-                builder.AddCopyRowId(unlock.RowId);
+                unlock.ExcelRowIdentifier.OpenWindow(_serviceProvider);
+            }
+
+            ImGuiContextMenu.Draw($"Entry{entry.Index}_{unlock.ExcelRowIdentifier.GetKey()}_RowIdContextMenu", builder =>
+            {
+                builder.AddCopyRowId(unlock.ExcelRowIdentifier.RowId);
             });
         }
     }

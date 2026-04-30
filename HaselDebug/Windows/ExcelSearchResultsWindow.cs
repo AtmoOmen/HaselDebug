@@ -1,4 +1,5 @@
 using HaselDebug.Tabs.Excel;
+using HaselDebug.Utils;
 
 namespace HaselDebug.Windows;
 
@@ -6,7 +7,6 @@ namespace HaselDebug.Windows;
 public partial class ExcelSearchResultsWindow : SimpleWindow
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly WindowManager _windowManager;
     private readonly ExcelTab _excelTab;
     private readonly string _searchTerm;
     private readonly List<GlobalSearchResult> _results;
@@ -76,7 +76,10 @@ public partial class ExcelSearchResultsWindow : SimpleWindow
             }
             else if (ImGui.Selectable($"{result.RowId}##RowId{index}", false))
             {
-                OpenSheet(result.SheetName, (uint)float.Parse(result.RowId));
+                var parts = result.RowId.Split('.');
+                var rowId = uint.Parse(parts[0]);
+                ushort? subrowId = parts.Length > 1 ? ushort.Parse(parts[1]) : null;
+                OpenSheet(result.SheetName, rowId, subrowId);
             }
 
             ImGui.TableNextColumn();
@@ -91,12 +94,12 @@ public partial class ExcelSearchResultsWindow : SimpleWindow
         }
     }
 
-    private void OpenSheet(string sheetName, uint rowId)
+    private void OpenSheet(string sheetName, uint rowId, ushort? subrowId)
     {
         if (!_excelTab.TryGetSheetType(sheetName, out var sheetType))
             return;
 
-        var title = $"{sheetName}#{rowId} ({_excelTab.SelectedLanguage})";
-        _windowManager.CreateOrOpen(title, () => ActivatorUtilities.CreateInstance<ExcelRowTab>(_serviceProvider, sheetType, rowId, _excelTab.SelectedLanguage, title));
+        new ExcelRowIdentifier(sheetType, rowId, subrowId, _excelTab.SelectedLanguage)
+            .OpenWindow(_serviceProvider);
     }
 }

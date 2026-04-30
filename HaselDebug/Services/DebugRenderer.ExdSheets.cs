@@ -1,10 +1,11 @@
+using System.Globalization;
 using System.Reflection;
 using Dalamud.Utility;
 using HaselDebug.Utils;
 
 namespace HaselDebug.Services;
 
-public unsafe partial class DebugRenderer
+public partial class DebugRenderer
 {
     public void DrawExdRow(Type sheetType, uint rowId, uint depth, NodeOptions nodeOptions)
     {
@@ -46,7 +47,103 @@ public unsafe partial class DebugRenderer
         }
     }
 
-    public void DrawExdSheetColumnValue(Type sheetType, uint rowId, string propName, uint depth, NodeOptions nodeOptions)
+    public void DrawExdSubrows(Type sheetType, uint rowId, uint depth, NodeOptions nodeOptions)
+    {
+        if (depth > 10)
+        {
+            ImGui.Text("max depth reached"u8);
+            return;
+        }
+
+        nodeOptions = nodeOptions.WithAddress((StringComparer.Ordinal.GetHashCode(sheetType.Name), (nint)rowId).GetHashCode());
+
+        var title = $"{sheetType.Name}#{rowId}";
+        if (!string.IsNullOrEmpty(nodeOptions.Title))
+        {
+            title = nodeOptions.Title;
+            nodeOptions = nodeOptions with { Title = null };
+        }
+
+        using var titleColor = ImRaii.PushColor(ImGuiCol.Text, nodeOptions.TitleColor ?? ColorTreeNode.ToVector());
+        using var node = ImRaii.TreeNode($"{title}###{nodeOptions.AddressPath}", nodeOptions.GetTreeNodeFlags());
+        nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
+        if (!node) return;
+        titleColor.Dispose();
+
+        var getSheet = _dataManager.Excel.GetType().GetMethod("GetSubrowSheet", BindingFlags.Instance | BindingFlags.Public)!;
+        var genericGetSheet = getSheet.MakeGenericMethod(sheetType);
+        var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
+        var sheet = genericGetSheet.Invoke(_dataManager.Excel, [language.ToLumina(), sheetType.GetCustomAttribute<SheetAttribute>()?.Name ?? sheetType.Name]);
+        if (sheet == null)
+        {
+            ImGui.Text("sheet is null"u8);
+            return;
+        }
+
+        var getRowOrDefault = sheet.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public).FirstOrDefault(info => info.Name == "GetRowOrDefault" && info.GetParameters().Length == 1);
+        if (getRowOrDefault == null)
+        {
+            ImGui.Text("Could not find GetRowOrDefault"u8);
+            return;
+        }
+
+        var row = getRowOrDefault?.Invoke(sheet, [rowId]);
+        if (row == null)
+        {
+            ImGui.Text($"Row {rowId} is null");
+            return;
+        }
+
+        DrawExcelColumn(
+            sheetType.Name,
+            typeof(SubrowCollection<>).MakeGenericType(sheetType),
+            row,
+            rowId,
+            depth,
+            nodeOptions);
+    }
+
+    public void DrawExdSubrow(Type sheetType, uint rowId, ushort subrowId, uint depth, NodeOptions nodeOptions)
+    {
+        if (depth > 10)
+        {
+            ImGui.Text("max depth reached"u8);
+            return;
+        }
+
+        nodeOptions = nodeOptions.WithAddress((StringComparer.Ordinal.GetHashCode(sheetType.Name), (nint)rowId, (nint)subrowId).GetHashCode());
+
+        var title = $"{sheetType.Name}#{rowId}.{subrowId}";
+        if (!string.IsNullOrEmpty(nodeOptions.Title))
+        {
+            title = nodeOptions.Title;
+            nodeOptions = nodeOptions with { Title = null };
+        }
+
+        using var titleColor = ImRaii.PushColor(ImGuiCol.Text, nodeOptions.TitleColor ?? ColorTreeNode.ToVector());
+        using var node = ImRaii.TreeNode($"{title}###{nodeOptions.AddressPath}", nodeOptions.GetTreeNodeFlags());
+        nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
+        if (!node) return;
+        titleColor.Dispose();
+
+        foreach (var propInfo in sheetType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+        {
+            if (propInfo.Name is "RowId" or "SubrowId" or "ExcelPage" or "RowOffset")
+                continue;
+
+            ImGuiUtils.DrawCopyableText(propInfo.PropertyType.ReadableTypeName(), new()
+            {
+                CopyText = propInfo.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
+                TextColor = ColorType
+            });
+            ImGui.SameLine();
+            ImGuiUtils.DrawCopyableText(propInfo.Name, new CopyableTextOptions() { TextColor = ColorFieldName });
+            ImGui.SameLine();
+            DrawExdSubrowSheetColumnValue(sheetType, rowId, subrowId, propInfo.Name, depth, nodeOptions.WithAddress(StringComparer.Ordinal.GetHashCode(propInfo.Name)));
+        }
+    }
+
+    private void DrawExdSheetColumnValue(Type sheetType, uint rowId, string propName, uint depth, NodeOptions nodeOptions)
     {
         var getSheet = _dataManager.Excel.GetType().GetMethod("GetSheet", BindingFlags.Instance | BindingFlags.Public)!;
         var genericGetSheet = getSheet.MakeGenericMethod(sheetType);
@@ -76,52 +173,98 @@ public unsafe partial class DebugRenderer
         if (propInfo == null)
             return;
 
-        DrawExcelProp(propInfo, row, rowId, depth, nodeOptions);
+        DrawExcelColumn(
+            propInfo.Name,
+            propInfo.PropertyType,
+            propInfo.GetValue(row),
+            rowId,
+            depth,
+            nodeOptions);
     }
 
-    private void DrawExcelProp(PropertyInfo propInfo, object? row, uint rowId, uint depth, NodeOptions nodeOptions)
+    private void DrawExdSubrowSheetColumnValue(Type sheetType, uint rowId, ushort subrowId, string propName, uint depth, NodeOptions nodeOptions)
     {
-        var propName = propInfo.Name;
-        var propType = propInfo.PropertyType;
-        var value = propInfo.GetValue(row);
+        var getSheet = _dataManager.Excel.GetType().GetMethod("GetSubrowSheet", BindingFlags.Instance | BindingFlags.Public)!;
+        var genericGetSheet = getSheet.MakeGenericMethod(sheetType);
+        var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
+        var sheet = genericGetSheet.Invoke(_dataManager.Excel, [language.ToLumina(), sheetType.GetCustomAttribute<SheetAttribute>()?.Name ?? sheetType.Name]);
+        if (sheet == null)
+        {
+            ImGui.Text("sheet is null"u8);
+            return;
+        }
 
+        var getSubrowOrDefault = sheet.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public).FirstOrDefault(info => info.Name == "GetSubrowOrDefault" && info.GetParameters().Length == 2);
+        if (getSubrowOrDefault == null)
+        {
+            ImGui.Text("Could not find GetSubrowOrDefault"u8);
+            return;
+        }
+
+        var row = getSubrowOrDefault?.Invoke(sheet, [rowId, subrowId]);
+        if (row == null)
+        {
+            ImGui.Text($"Row {rowId}.{subrowId} is null");
+            return;
+        }
+
+        var propInfo = sheetType.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
+        if (propInfo == null)
+            return;
+
+        DrawExcelColumn(
+            propInfo.Name,
+            propInfo.PropertyType,
+            propInfo.GetValue(row),
+            rowId,
+            depth,
+            nodeOptions);
+    }
+
+    private void DrawExcelColumn(string columnName, Type columnType, object? value, uint rowId, uint depth, NodeOptions nodeOptions)
+    {
         if (value == null)
         {
             ImGui.Text("null"u8);
             return;
         }
 
-        if (propType == typeof(ReadOnlySeString))
+        if (columnType == typeof(ReadOnlySeString))
         {
             var language = nodeOptions.Language ?? _languageProvider.ClientLanguage;
             DrawSeString(((ReadOnlySeString)value).AsSpan(), new NodeOptions()
             {
-                AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(propName)),
+                AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(columnName)),
                 RenderSeString = false,
-                Title = $"{row!.GetType().Name}#{rowId} ({language}) {propName}",
+                Title = $"{value!.GetType().Name}#{rowId} ({language}) {columnName}",
                 Language = language
             });
             return;
         }
 
-        if (propType == typeof(RowRef))
+        if (columnType == typeof(RowRef))
         {
-            var columnRowId = (uint)propType.GetProperty("RowId")?.GetValue(value)!;
+            var columnRowId = (uint)columnType.GetProperty("RowId")?.GetValue(value)!;
             ImGuiUtils.DrawCopyableText(columnRowId.ToString());
             return;
         }
 
-        if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(RowRef<>))
+        if (columnType.IsGenericType && columnType.GetGenericTypeDefinition() == typeof(RowRef<>))
         {
-            var isValid = (bool)propType.GetProperty("IsValid")?.GetValue(value)!;
+            var isValid = (bool)columnType.GetProperty("IsValid")?.GetValue(value)!;
+            var columnRowId = (uint)columnType.GetProperty("RowId")?.GetValue(value)!;
+
             if (!isValid)
             {
-                ImGui.Text("null"u8);
+                ImGui.Text("Invalid (RowId: "u8);
+                ImGui.SameLine(0, 0);
+                ImGuiUtils.DrawCopyableText(columnRowId.ToString());
+                ImGui.SameLine(0, 0);
+                ImGui.Text(")"u8);
                 return;
             }
 
-            var columnRowType = propType.GenericTypeArguments[0];
-            var columnRowId = (uint)propType.GetProperty("RowId")?.GetValue(value)!;
+            var columnRowType = columnType.GenericTypeArguments[0];
             DrawExdRow(columnRowType, columnRowId, depth + 1, new NodeOptions()
             {
                 RenderSeString = nodeOptions.RenderSeString,
@@ -131,16 +274,41 @@ public unsafe partial class DebugRenderer
             return;
         }
 
-        if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(Collection<>))
+        if (columnType.IsGenericType && columnType.GetGenericTypeDefinition() == typeof(SubrowRef<>))
         {
-            var count = (int)propType.GetProperty("Count")?.GetValue(value)!;
+            var isValid = (bool)columnType.GetProperty("IsValid")?.GetValue(value)!;
+            var columnRowId = (uint)columnType.GetProperty("RowId")?.GetValue(value)!;
+
+            if (!isValid)
+            {
+                ImGui.Text("Invalid (RowId: "u8);
+                ImGui.SameLine(0, 0);
+                ImGuiUtils.DrawCopyableText(columnRowId.ToString());
+                ImGui.SameLine(0, 0);
+                ImGui.Text(")"u8);
+                return;
+            }
+
+            var columnRowType = columnType.GenericTypeArguments[0];
+            DrawExdSubrows(columnRowType, columnRowId, depth + 1, new NodeOptions()
+            {
+                RenderSeString = nodeOptions.RenderSeString,
+                Language = nodeOptions.Language,
+                AddressPath = nodeOptions.AddressPath.With((StringComparer.Ordinal.GetHashCode(columnRowType.Name), (nint)columnRowId).GetHashCode())
+            });
+            return;
+        }
+
+        if (columnType.IsGenericType && columnType.GetGenericTypeDefinition() == typeof(Collection<>))
+        {
+            var count = (int)columnType.GetProperty("Count")?.GetValue(value)!;
             if (count == 0)
             {
                 ImGui.Text("No values"u8);
                 return;
             }
 
-            var collectionType = propType.GenericTypeArguments[0];
+            var collectionType = columnType.GenericTypeArguments[0];
             var propNodeOptions = nodeOptions.WithAddress(StringComparer.Ordinal.GetHashCode(collectionType.Name));
 
             using var colTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
@@ -164,94 +332,62 @@ public unsafe partial class DebugRenderer
                 ImGui.Text(i.ToString());
 
                 ImGui.TableNextColumn(); // Value
-
-                var colValue = propType.GetMethod("get_Item")?.Invoke(value, [i]);
-                if (colValue == null)
-                {
-                    ImGui.Text("null"u8);
-                    continue;
-                }
-
-                if (collectionType == typeof(ReadOnlySeString))
-                {
-                    DrawSeString(((ReadOnlySeString)colValue).AsSpan(), true, new NodeOptions()
-                    {
-                        Title = $"{row!.GetType().Name}#{rowId} {propName}[{i}]",
-                        RenderSeString = nodeOptions.RenderSeString,
-                        AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(collectionType.Name))
-                    });
-                    continue;
-                }
-
-                if (collectionType == typeof(RowRef))
-                {
-                    var columnRowId = (uint)collectionType.GetProperty("RowId")?.GetValue(colValue)!;
-                    ImGuiUtils.DrawCopyableText(columnRowId.ToString());
-                    continue;
-                }
-
-                if (collectionType.IsGenericType && collectionType.GetGenericTypeDefinition() == typeof(RowRef<>))
-                {
-                    var isValid = (bool)collectionType.GetProperty("IsValid")?.GetValue(colValue)!;
-                    if (!isValid)
-                    {
-                        ImGui.Text("null"u8);
-                        continue;
-                    }
-
-                    var columnRowType = collectionType.GenericTypeArguments[0];
-                    var columnRowId = (uint)collectionType.GetProperty("RowId")?.GetValue(colValue)!;
-
-                    DrawExdRow(columnRowType, columnRowId, depth + 1, new NodeOptions()
-                    {
-                        RenderSeString = nodeOptions.RenderSeString,
-                        Language = nodeOptions.Language,
-                        AddressPath = nodeOptions.AddressPath.With((i, StringComparer.Ordinal.GetHashCode(columnRowType.Name), (nint)columnRowId).GetHashCode())
-                    });
-                    continue;
-                }
-
-                if (collectionType.IsStruct())
-                {
-                    using var structTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
-                    using var structNode = ImRaii.TreeNode($"{collectionType.Name}{propNodeOptions.GetKey($"{collectionType.Name}_{i}")}", nodeOptions.GetTreeNodeFlags());
-                    if (!structNode) continue;
-                    structTitleColor?.Dispose();
-
-                    foreach (var pi in collectionType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
-                    {
-                        if (propInfo.Name is "RowId" or "ExcelPage" or "RowOffset")
-                            continue;
-
-                        ImGuiUtils.DrawCopyableText(pi.PropertyType.ReadableTypeName(), new()
-                        {
-                            CopyText = pi.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
-                            TextColor = ColorType
-                        });
-                        ImGui.SameLine();
-                        ImGuiUtils.DrawCopyableText(pi.Name, new CopyableTextOptions() { TextColor = ColorFieldName });
-                        ImGui.SameLine();
-                        DrawExcelProp(pi, colValue, rowId, depth, nodeOptions);
-                    }
-
-                    continue;
-                }
-
-                if (collectionType.IsPrimitive)
-                {
-                    ImGuiUtils.DrawCopyableText(colValue.ToString() ?? string.Empty);
-                    continue;
-                }
-
-                ImGui.Text($"Unsupported type: {collectionType.Name}");
+                var colValue = columnType.GetMethod("get_Item")?.Invoke(value, [i]);
+                DrawExcelColumn(columnName + $"[{i}]", collectionType, colValue, rowId, depth + 1, nodeOptions);
             }
 
             return;
         }
 
-        if (nodeOptions.IsIconIdField && propType.IsNumericType())
+        if (columnType.IsGenericType && columnType.GetGenericTypeDefinition() == typeof(SubrowCollection<>))
         {
-            DrawIcon(value, propType);
+            var count = (int)columnType.GetProperty("Count")?.GetValue(value)!;
+            if (count == 0)
+            {
+                ImGui.Text("No values"u8);
+                return;
+            }
+
+            var collectionType = columnType.GenericTypeArguments[0];
+            var propNodeOptions = nodeOptions.WithAddress(StringComparer.Ordinal.GetHashCode(collectionType.Name));
+
+            using var colTitleColor = ImRaii.PushColor(ImGuiCol.Text, ColorTreeNode.ToVector());
+            using var colNode = ImRaii.TreeNode($"{count} Value{(count != 1 ? "s" : "")}{propNodeOptions.GetKey("CollectionNode")}", nodeOptions.GetTreeNodeFlags());
+            if (!colNode) return;
+            colTitleColor?.Dispose();
+
+            using var table = ImRaii.Table(propNodeOptions.GetKey("CollectionTable"), 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings);
+            if (!table) return;
+
+            ImGui.TableSetupColumn("SubrowId"u8, ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("Value");
+            ImGui.TableSetupScrollFreeze(2, 1);
+            ImGui.TableHeadersRow();
+
+            using var indent = ImRaii.PushIndent(1, nodeOptions.Indent);
+            for (ushort i = 0; i < count; i++)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn(); // Index
+                ImGui.Text(i.ToString());
+
+                ImGui.TableNextColumn(); // Value
+                var colValue = columnType.GetMethod("get_Item")?.Invoke(value, [i]);
+                DrawExdSubrow(collectionType, rowId, i, depth + 1, nodeOptions);
+            }
+
+            return;
+        }
+
+        if (columnType.IsNumericType())
+        {
+            if (nodeOptions.IsIconIdField)
+            {
+                DrawIcon(value, columnType);
+            }
+
+            ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            return;
         }
 
         ImGuiUtils.DrawCopyableText(value.ToString() ?? string.Empty);

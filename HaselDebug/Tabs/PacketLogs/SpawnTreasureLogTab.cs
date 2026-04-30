@@ -1,9 +1,7 @@
-using System.Runtime.CompilerServices;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.Network;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
-using HaselDebug.Utils;
 
 namespace HaselDebug.Tabs.PacketLogs;
 
@@ -51,10 +49,7 @@ public unsafe partial class SpawnTreasureLogTab : PacketLogTab<SpawnTreasurePack
             ImGui.Text(time.ToLongTimeString());
 
             ImGui.TableNextColumn();
-            _debugRenderer.DrawPointerType((SpawnTreasurePacket*)Unsafe.AsPointer(in packet), new NodeOptions()
-            {
-                AddressPath = new(index)
-            });
+            _debugRenderer.DrawPointerType(packet);
         }
     }
 

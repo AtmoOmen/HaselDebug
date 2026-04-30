@@ -3,7 +3,6 @@ using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Extensions;
 using HaselDebug.Services;
 using HaselDebug.Utils;
-using HaselDebug.Windows;
 
 namespace HaselDebug.Tabs.Excel;
 
@@ -12,9 +11,7 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ExcelTab _excelTab;
-    private readonly ExcelTable<T> _excelTable;
     private readonly DebugRenderer _debugRenderer;
-    private readonly WindowManager _windowManager;
     private readonly PropertyInfo _propertyInfo;
 
     public Type RowType => typeof(T);
@@ -106,6 +103,7 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
     {
         var value = _propertyInfo.GetValue(row);
         var rowId = (uint)RowType.GetProperty("RowId", BindingFlags.Public | BindingFlags.Instance)!.GetValue(row)!;
+        var subrowId = (ushort?)RowType.GetProperty("SubrowId", BindingFlags.Public | BindingFlags.Instance)?.GetValue(row);
 
         if (value == null)
         {
@@ -113,11 +111,11 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
             return;
         }
 
-        if (!_excelTable.IsSubrowType && Label is "RowId" or "SubrowId")
+        if (Label is "RowId" or "SubrowId")
         {
             if (ImGui.Selectable(value.ToString()))
             {
-                OpenSheet(RowType.Name, rowId);
+                OpenSheet(RowType.Name, rowId, subrowId);
             }
             ImGuiContextMenu.Draw($"{RowType.Name}{rowId}RowIdContextMenu", builder =>
             {
@@ -157,7 +155,7 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
                 using var color = DebugRenderer.ColorTreeNode.Push(ImGuiCol.Text);
 
                 if (ImGui.Selectable(text))
-                    OpenSheet(rowRefType.Name, rowRefRowId);
+                    OpenSheet(rowRefType.Name, rowRefRowId, null);
             }
             else
             {
@@ -180,7 +178,7 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
                 using var color = DebugRenderer.ColorTreeNode.Push(ImGuiCol.Text);
 
                 if (ImGui.Selectable(text))
-                    OpenSheet(rowRefType.Name, rowRefRowId);
+                    OpenSheet(rowRefType.Name, rowRefRowId, null);
             }
             else
             {
@@ -194,7 +192,7 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
         if (ColumnType.IsGenericType && ColumnType.GetGenericTypeDefinition() == typeof(Collection<>))
         {
             var count = (int)ColumnType.GetProperty("Count")?.GetValue(value)!;
-            using (Color.Grey.Push(ImGuiCol.Text))
+            using (Color.Text700.Push(ImGuiCol.Text))
                 ImGui.Text($"{count} value{(count != 1 ? "s" : "")}"); // TODO: click to open
             return;
         }
@@ -208,12 +206,12 @@ public partial class ExcelSheetColumn<T> : ColumnString<T> where T : struct
         ImGui.Text(value.ToString()); // TODO: invariant culture
     }
 
-    private void OpenSheet(string sheetName, uint rowId)
+    private void OpenSheet(string sheetName, uint rowId, ushort? subrowId)
     {
         if (!_excelTab.TryGetSheetType(sheetName, out var sheetType))
             return;
 
-        var title = $"{sheetName}#{rowId} ({_excelTab.SelectedLanguage})";
-        _windowManager.CreateOrOpen(title, () => ActivatorUtilities.CreateInstance<ExcelRowTab>(_serviceProvider, sheetType, rowId, _excelTab.SelectedLanguage, title));
+        new ExcelRowIdentifier(sheetType, rowId, subrowId, _excelTab.SelectedLanguage)
+            .OpenWindow(_serviceProvider);
     }
 }

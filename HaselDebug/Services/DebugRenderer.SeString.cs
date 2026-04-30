@@ -218,8 +218,9 @@ public unsafe partial class DebugRenderer
 
         nodeOptions = nodeOptions.WithAddress(rosss.GetHashCode());
 
-        using var node = asTreeNode ? DrawTreeNode(nodeOptions.WithSeStringTitle(rosss)) : null;
-        if (asTreeNode && !node!) return;
+        using var node = asTreeNode ? DrawTreeNode(nodeOptions.WithSeStringTitle(rosss)) : default;
+        if (asTreeNode && !node)
+            return;
 
         if (!asTreeNode && nodeOptions.RenderSeString)
         {
@@ -314,7 +315,7 @@ public unsafe partial class DebugRenderer
         {
             if (macroCode is MacroCode.Icon or MacroCode.Icon2 && idx == 0)
             {
-                _gfdService.Draw(u32, ImGui.GetTextLineHeight());
+                _gfdService.Draw(u32, ImStyle.TextLineHeight);
                 ImGui.SameLine();
             }
 

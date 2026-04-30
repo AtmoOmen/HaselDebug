@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Network;
@@ -52,15 +51,9 @@ public unsafe partial class SpawnObjectLogTab : PacketLogTab<SpawnObjectPacket>,
             ImGui.Text(time.ToLongTimeString());
 
             ImGui.TableNextColumn();
-
-            var objectKind = packet.ObjectKind;
+            var objectKind = packet.Value->ObjectKind;
             var name = $"[{(ObjectKind)objectKind}] ";
-
-            _debugRenderer.DrawPointerType((SpawnObjectPacket*)Unsafe.AsPointer(in packet), new NodeOptions()
-            {
-                AddressPath = new(i),
-                Title = name
-            });
+            _debugRenderer.DrawPointerType(packet, new NodeOptions() { Title = name });
         }
     }
 

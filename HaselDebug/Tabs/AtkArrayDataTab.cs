@@ -161,17 +161,14 @@ public unsafe partial class AtkArrayDataTab : DebugTab
             if (ImGui.IsItemHovered())
             {
                 using var tooltip = ImRaii.Tooltip();
-                if (tooltip)
+                var raptureAtkUnitManager = RaptureAtkUnitManager.Instance();
+
+                for (var j = 0; j < array->SubscribedAddonsCount; j++)
                 {
-                    var raptureAtkUnitManager = RaptureAtkUnitManager.Instance();
+                    if (array->SubscribedAddons[j] == 0)
+                        continue;
 
-                    for (var j = 0; j < array->SubscribedAddonsCount; j++)
-                    {
-                        if (array->SubscribedAddons[j] == 0)
-                            continue;
-
-                        ImGui.Text(raptureAtkUnitManager->GetAddonById(array->SubscribedAddons[j])->NameString);
-                    }
+                    ImGui.Text(raptureAtkUnitManager->GetAddonById(array->SubscribedAddons[j])->NameString);
                 }
             }
         }
@@ -194,7 +191,7 @@ public unsafe partial class AtkArrayDataTab : DebugTab
         if (_selectedNumberArray >= atkArrayDataHolder.NumberArrayCount || atkArrayDataHolder.NumberArrayKeys[_selectedNumberArray] == -1)
             _selectedNumberArray = 0;
 
-        ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
+        ImGui.SameLine(0, ImStyle.ItemInnerSpacing.X);
 
         using var child = ImRaii.Child("AtkArrayContent", new Vector2(-1), true, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
         if (!child) return;
@@ -269,7 +266,7 @@ public unsafe partial class AtkArrayDataTab : DebugTab
         if (_selectedStringArray >= atkArrayDataHolder.StringArrayCount || atkArrayDataHolder.StringArrayKeys[_selectedStringArray] == -1)
             _selectedStringArray = 0;
 
-        ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
+        ImGui.SameLine(0, ImStyle.ItemInnerSpacing.X);
 
         using var child = ImRaii.Child("AtkArrayContent", new Vector2(-1), true, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
         if (!child) return;
@@ -329,7 +326,7 @@ public unsafe partial class AtkArrayDataTab : DebugTab
             ImGui.TableNextColumn(); // Managed
             if (!isNull)
             {
-                ImGui.Text(((nint)array->StringArray[i].Value != 0 && array->ManagedStringArray[i] == array->StringArray[i]).ToString());
+                ImGui.Text(((nint)array->StringArray[i].Value != 0 && array->ManagedStringArray[i].AsSpan().SequenceEqual(array->StringArray[i].AsSpan())).ToString());
             }
 
             ImGui.TableNextColumn(); // Text
@@ -364,7 +361,7 @@ public unsafe partial class AtkArrayDataTab : DebugTab
         if (_selectedExtendArray >= atkArrayDataHolder.ExtendArrayCount || atkArrayDataHolder.ExtendArrayKeys[_selectedExtendArray] == -1)
             _selectedExtendArray = 0;
 
-        ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
+        ImGui.SameLine(0, ImStyle.ItemInnerSpacing.X);
 
         using var child = ImRaii.Child("AtkArrayContent", new Vector2(-1), true, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
 

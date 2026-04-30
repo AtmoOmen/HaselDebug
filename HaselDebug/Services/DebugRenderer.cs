@@ -238,7 +238,7 @@ public unsafe partial class DebugRenderer
         ImGui.Text("Unsupported Type"u8);
     }
 
-    public ImRaii.IEndObject DrawTreeNode(NodeOptions nodeOptions)
+    public ImRaii.TreeNodeDisposable DrawTreeNode(NodeOptions nodeOptions)
     {
         using var titleColor = ImRaii.PushColor(ImGuiCol.Text, (nodeOptions.TitleColor ?? ColorTreeNode).ToUInt());
         var previewText = string.Empty;
@@ -315,6 +315,11 @@ public unsafe partial class DebugRenderer
                 if (pos != null)
                     DrawLineToGamePos((Vector3)(*pos));
             }
+        }
+        else if (Inherits<FFXIVClientStructs.FFXIV.Client.Graphics.Scene.Object>(type))
+        {
+            var obj = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.Object*)address;
+            DrawLineToGamePos(obj->Position);
         }
         else if (Inherits<AtkUnitBase>(type))
         {

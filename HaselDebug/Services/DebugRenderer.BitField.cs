@@ -46,11 +46,11 @@ public unsafe partial class DebugRenderer
 
         ImGuiUtils.DrawCopyableText($"[0x{fieldOffset:X}]", new()
         {
-            CopyText = ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"{fieldAddress + fieldOffset:X}" : $"0x{fieldOffset:X}",
-            TextColor = Color.Grey3
+            CopyText = ImGui.IsKeyDown(ImGuiKey.LeftShift) ? $"{fieldAddress:X}" : $"0x{fieldOffset:X}",
+            TextColor = Color.Text600
         });
 
-        ImGuiUtils.SameLineSpace();
+        ImCursor.SameLineSpace();
 
         ImGui.TextColored(ColorBitField, $"[{index}:{length}]");
         if (ImGui.IsItemHovered())
@@ -102,7 +102,7 @@ public unsafe partial class DebugRenderer
 
         var fullName = $"{structType.FullName}.{name}";
         var hasDoc = HasDocumentation(fullName);
-        var startPos = ImGui.GetCursorScreenPos();
+        var startPos = ImCursor.ScreenPosition;
 
         ImGuiUtils.DrawCopyableText(name, new CopyableTextOptions() { NoTooltip = true, TextColor = ColorFieldName });
 

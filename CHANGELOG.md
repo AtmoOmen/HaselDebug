@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+- **Added:** Event Play and Event Yield Log tab to inspect data from those packets.
+- **Updated:** The type of AtkValues is now shown.
+- **Updated:** ClientStructs now at [fa8345a1](https://github.com/aers/FFXIVClientStructs/tree/fa8345a1) ([compare](https://github.com/aers/FFXIVClientStructs/compare/9c7551ac..fa8345a1)).
+
+## [1.54.0] (2026-04-07)
+
+- **Added:** Zone Init Log tab to inspect ZoneInit packets.
+- **Fixed:** TreeNodes in Packet Log tabs couldn't be opened.
+- **Updated:** ClientStructs now at [9c7551ac](https://github.com/aers/FFXIVClientStructs/tree/9c7551ac) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4245e53d..9c7551ac)).
+
+## [1.53.0] (2026-04-06)
+
+- **Updated:** The excel renderer now supports Subrow sheets and SubrowRefs.
+- **Updated:** The Unlock Links tab now displays unknown entries and a couple system unlocks have been manually added.
+- **Fixed:** Region names in the Aetherytes tab have been corrected.
+- **Fixed:** DescriptionPages in the Unlock Links tab now properly display the Subrow id.
+- **Updated:** ClientStructs now at [9c7551ac](https://github.com/aers/FFXIVClientStructs/tree/9c7551ac) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4245e53d..9c7551ac)).
+
 ## [1.52.0] (2026-03-30)
 
 - **Added:** A config option to toggle the /xldev menu entry.
@@ -836,7 +856,9 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.52.0...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.54.0...main
+[1.54.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.53.0...v1.54.0
+[1.53.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.52.0...v1.53.0
 [1.52.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.51.1...v1.52.0
 [1.51.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.51.0...v1.51.1
 [1.51.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.50.0...v1.51.0

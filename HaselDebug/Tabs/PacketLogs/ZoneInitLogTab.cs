@@ -1,14 +1,14 @@
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
-using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Client.Network;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 
 namespace HaselDebug.Tabs.PacketLogs;
 
 [RegisterSingleton<IPacketLogTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmListingSegmentPacket>, IDisposable
+public unsafe partial class ZoneInitLogTab : PacketLogTab<ZoneInitPacket>, IDisposable
 {
-    private Hook<InfoProxyCrossRealm.Delegates.ReceiveListing>? _hook;
+    private Hook<PacketDispatcher.Delegates.HandleZoneInitPacket>? _hook;
 
     public void Dispose()
     {
@@ -16,15 +16,15 @@ public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmLi
         Clear();
     }
 
-    private void ReceiveListingDetour(InfoProxyCrossRealm* thisPtr, ServerIpcSegment<CrossRealmListingSegmentPacket>* packet)
+    private void HandleZoneInitPacketDetour(uint targetId, ZoneInitPacket* packet, byte a3)
     {
-        AddRecord(packet->Payload);
-        _hook!.Original(thisPtr, packet);
+        AddRecord(*packet);
+        _hook!.Original(targetId, packet, a3);
     }
 
     public override void Draw()
     {
-        _hook ??= _gameInteropProvider.HookFromAddress<InfoProxyCrossRealm.Delegates.ReceiveListing>((nint)InfoProxyCrossRealm.MemberFunctionPointers.ReceiveListing, ReceiveListingDetour);
+        _hook ??= _gameInteropProvider.HookFromAddress<PacketDispatcher.Delegates.HandleZoneInitPacket>(PacketDispatcher.MemberFunctionPointers.HandleZoneInitPacket, HandleZoneInitPacketDetour);
 
         var enabled = IsPacketLogEnabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
@@ -34,7 +34,7 @@ public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmLi
         if (ImGui.Button("Clear"))
             Clear();
 
-        using var table = ImRaii.Table("PartyFinderListingLogTable"u8, 2, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
+        using var table = ImRaii.Table("ZoneInitTable"u8, 2, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable);
         if (!table) return;
 
         ImGui.TableSetupColumn("Time"u8, ImGuiTableColumnFlags.WidthFixed, 100);
@@ -42,13 +42,13 @@ public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmLi
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
-        foreach (var (index, time, packet) in Records)
+        foreach (var (i, time, packet) in Records)
         {
             ImGui.TableNextRow();
-            ImGui.TableNextColumn(); // Time
+            ImGui.TableNextColumn();
             ImGui.Text(time.ToLongTimeString());
 
-            ImGui.TableNextColumn(); // Packet
+            ImGui.TableNextColumn();
             _debugRenderer.DrawPointerType(packet);
         }
     }

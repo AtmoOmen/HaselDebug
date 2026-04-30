@@ -92,7 +92,7 @@ public unsafe partial class ConfigTab : DebugTab
         using var tab = ImRaii.TabItem(tabTitle);
         if (!tab) return;
 
-        using var table = ImRaii.Table("ConfigOptionTable"u8, 7, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Resizable | ImGuiTableFlags.NoSavedSettings, ImGui.GetContentRegionAvail());
+        using var table = ImRaii.Table("ConfigOptionTable"u8, 7, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.Resizable | ImGuiTableFlags.NoSavedSettings, ImStyle.ContentRegionAvail);
         if (!table) return;
 
         ImGui.TableSetupColumn("Index"u8, ImGuiTableColumnFlags.WidthFixed, 50);
@@ -272,7 +272,7 @@ public unsafe partial class ConfigTab : DebugTab
             if (dict.ContainsKey(i))
                 continue;
 
-            var name = configEntry->Name != null
+            var name = configEntry->Name.HasValue
                 ? configEntry->Name.ToString()
                 : string.Empty;
 

@@ -105,7 +105,7 @@ public unsafe partial class ExcelTab : DebugTab
             _nextSheetWrapper = null;
         }
 
-        var regionAvail = ImGui.GetContentRegionAvail();
+        var regionAvail = ImStyle.ContentRegionAvail;
 
         if (ImGui.Checkbox("Use Experimental Sheets", ref _useExperimentalSheets))
         {
@@ -120,8 +120,8 @@ public unsafe partial class ExcelTab : DebugTab
         }
 
         ImGui.SameLine();
-        var languageSelectorWidth = LanguageSelectorWidth * ImGuiHelpers.GlobalScale;
-        ImGui.SetCursorPosX(regionAvail.X - languageSelectorWidth);
+        var languageSelectorWidth = LanguageSelectorWidth * ImStyle.Scale;
+        ImCursor.X = regionAvail.X - languageSelectorWidth;
         ImGui.SetNextItemWidth(languageSelectorWidth);
         using (var dropdown = ImRaii.Combo("##Language", SelectedLanguage.ToString()))
         {
@@ -142,7 +142,7 @@ public unsafe partial class ExcelTab : DebugTab
         DrawGlobalSearch();
 
         DrawSheetList();
-        ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
+        ImGui.SameLine(0, ImStyle.ItemInnerSpacing.X);
 
         using var innerChild = ImRaii.Child("InnerHost", new Vector2(-1), false, ImGuiWindowFlags.NoSavedSettings);
         if (!innerChild) return;
@@ -205,7 +205,7 @@ public unsafe partial class ExcelTab : DebugTab
         // Handle typed sheets with type definitions
         if (TryGetSheetType(sheetName, out var sheetType))
         {
-            // For typed sheets, use ExcelV2SheetWrapper
+            // For typed sheets, use ExcelSheetWrapper
             _nextSheetWrapper = (IExcelSheetWrapper)ActivatorUtilities.CreateInstance(
                 _serviceProvider,
                 typeof(ExcelSheetWrapper<>).MakeGenericType(sheetType),
