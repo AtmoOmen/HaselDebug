@@ -65,7 +65,7 @@ public static class DebugUtils
 
         var fieldsByOffsetAndName = new SortedDictionary<(int, string), FieldInfo>();
 
-        void CollectFieldsRecursive(Type currentType)
+        void CollectFieldsRecursive(Type currentType, int offset)
         {
             var fields = currentType
                 .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
@@ -73,10 +73,13 @@ public static class DebugUtils
 
             foreach (var field in fields)
             {
+                if (!Attribute.IsDefined(field, typeof(FieldOffsetAttribute)))
+                    continue;
+
                 if (field.GetCustomAttribute<FieldOffsetAttribute>() is not FieldOffsetAttribute fieldOffsetAttr)
                     continue;
 
-                fieldsByOffsetAndName.TryAdd((fieldOffsetAttr.Value, field.Name), field);
+                fieldsByOffsetAndName.TryAdd((offset + fieldOffsetAttr.Value, field.Name), field);
             }
 
             var inheritAttrs = currentType.GetCustomAttributes()
@@ -87,11 +90,12 @@ public static class DebugUtils
             foreach (var attr in inheritAttrs)
             {
                 var parentType = attr.GetType().GenericTypeArguments[0];
-                CollectFieldsRecursive(parentType);
+                CollectFieldsRecursive(parentType, offset);
+                offset += parentType.SizeOf();
             }
         }
 
-        CollectFieldsRecursive(type);
+        CollectFieldsRecursive(type, 0);
 
         return FieldCache[type] = [.. fieldsByOffsetAndName.Values];
     }

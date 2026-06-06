@@ -1,14 +1,20 @@
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
 
 [RegisterSingleton, AutoConstruct]
-public partial class SetColumn : ColumnString<MirageStoreSetItem>
+public unsafe partial class SetColumn : ColumnString<MirageStoreSetItem>
 {
     private const float IconSize = OutfitsTable.IconSize;
 
     private readonly TextService _textService;
+    private readonly MirageService _mirageService;
+    private readonly CabinetService _cabinetService;
     private readonly ITextureProvider _textureProvider;
+
+    public OutfitsTable Table;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -22,11 +28,7 @@ public partial class SetColumn : ColumnString<MirageStoreSetItem>
 
     public override void DrawColumn(MirageStoreSetItem row)
     {
-        var isSetInGlamourDresser = OutfitsTable.TryGetSetItemBitArray(row, out var bitArray);
-        var isFullSetCollected = isSetInGlamourDresser && row.Items
-            .Index()
-            .Where((kv) => kv.Item.RowId != 0)
-            .All((kv) => bitArray.TryGet(kv.Index, out var slotLocked) && !slotLocked);
+        var isSetCollected = Table.IsSetCollected(row);
 
         ImGui.BeginGroup();
         ImGui.Dummy(ImGuiHelpers.ScaledVector2(IconSize));
@@ -36,10 +38,10 @@ public partial class SetColumn : ColumnString<MirageStoreSetItem>
             (uint)row.Set.Value.Icon,
             new(IconSize * ImStyle.Scale)
             {
-                TintColor = isSetInGlamourDresser
+                TintColor = isSetCollected
                     ? Color.White
                     : ImGui.IsItemHovered() || ImGui.IsPopupOpen($"###Set_{row.RowId}_Icon_ItemContextMenu")
-                        ? Color.White : Color.Text600
+                        ? Color.White : (Color.White with { A = 0.333f })
             }
         );
 
@@ -55,21 +57,45 @@ public partial class SetColumn : ColumnString<MirageStoreSetItem>
             ImGui.Text(ToName(row));
         }
 
-        if (isFullSetCollected)
+        if (isSetCollected)
             OutfitsTable.DrawCollectedCheckmark(_textureProvider);
 
         ImGui.SameLine();
-        ImGui.Selectable($"###SetName_{row.RowId}", false, ImGuiSelectableFlags.None, new Vector2(ImStyle.ContentRegionAvail.X, IconSize * ImStyle.Scale));
+        if (ImGui.Selectable($"###SetName_{row.RowId}", false, ImGuiSelectableFlags.None, new Vector2(ImStyle.ContentRegionAvail.X, IconSize * ImStyle.Scale)))
+        {
+            var agentColorant = AgentColorant.Instance();
+            if (agentColorant->IsAgentActive())
+                agentColorant->Hide();
+
+            UIModule.Instance()->GetAgentHelpers()->HideBlockingCharaViewAgents(2, AgentId.Tryon);
+
+            var agent = AgentTryon.Instance();
+
+            agent->TryOnItems.Clear();
+
+            foreach (ref var item in agent->TryOnItems)
+                item.EquipSlotCategory = 0xE;
+
+            var i = 0;
+
+            foreach (var item in row.Items) // MirageStoreSetItem extension property
+            {
+                if (item.RowId == 0 || !item.IsValid)
+                    continue;
+
+                agent->TryOnItems[i++].Id = item.RowId;
+            }
+
+            agent->TryOnItemsChanged = true;
+            if (!agent->IsAgentActive())
+                agent->Show();
+        }
 
         ImGui.EndGroup();
 
-        // TODO: preview whole set??
         ImGuiContextMenu.Draw($"###Set_{row.RowId}_ItemContextMenu", builder =>
         {
-            builder.AddTryOn(row.Set.RowId);
-            builder.AddItemFinder(row.Set.RowId);
             builder.AddCopyItemName(row.Set.RowId);
-            builder.AddItemSearch(row.Set.RowId);
             builder.AddOpenOnGarlandTools("item", row.Set.RowId);
         });
 

@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.System.Resource.Handle;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Common.Component.Excel;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.STD;
 using HaselDebug.Utils;
@@ -23,16 +24,16 @@ public unsafe partial class DebugRenderer
 
         var fields = GetAllInheritedFields(type);
 
-        using var disabled = ImRaii.Disabled(!fields.Any());
+        using var disabled = ImRaii.Disabled(fields.Length == 0);
         using var node = DrawTreeNode(nodeOptions.WithSeStringTitleIfNull(type.FullName ?? "Unknown Type Name"));
         if (!node) return;
 
         var processedFields = fields
-            .OrderBy(fieldInfo => fieldInfo.GetFieldOffset())
+            .OrderBy(fieldInfo => fieldInfo.FieldOffset)
             .Select(fieldInfo => (
                 Info: fieldInfo,
-                Offset: fieldInfo.GetFieldOffset(),
-                Size: fieldInfo.IsFixed() ? fieldInfo.GetFixedType().SizeOf() * fieldInfo.GetFixedSize() : fieldInfo.FieldType.SizeOf()));
+                Offset: fieldInfo.FieldOffset,
+                Size: fieldInfo.IsFixed ? fieldInfo.FixedType.SizeOf() * fieldInfo.FixedSize : fieldInfo.FieldType.SizeOf()));
 
         nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
 
@@ -65,7 +66,7 @@ public unsafe partial class DebugRenderer
             if ((fieldType == typeof(short) || fieldType == typeof(int) || fieldType == typeof(ushort) || fieldType == typeof(uint)) && fieldInfo.Name.Contains("WorldId"))
                 fieldNodeOptions = fieldNodeOptions with { IsWorldIdField = true };
 
-            if (fieldInfo.GetCustomAttribute<ObsoleteAttribute>() is ObsoleteAttribute obsoleteAttribute)
+            if (Attribute.IsDefined(fieldInfo, typeof(ObsoleteAttribute)) && fieldInfo.GetCustomAttribute<ObsoleteAttribute>() is ObsoleteAttribute obsoleteAttribute)
             {
                 using (ImRaii.PushColor(ImGuiCol.Text, (obsoleteAttribute.IsError ? ColorObsoleteError : ColorObsolete).ToUInt()))
                     ImGui.Text("[Obsolete]"u8);
@@ -100,6 +101,8 @@ public unsafe partial class DebugRenderer
 
             // internal FixedSizeArrays
             if (fieldInfo.IsAssembly
+                && Attribute.IsDefined(fieldInfo, typeof(FixedSizeArrayAttribute))
+                && Attribute.IsDefined(fieldType, typeof(InlineArrayAttribute))
                 && fieldInfo.GetCustomAttribute<FixedSizeArrayAttribute>() is FixedSizeArrayAttribute fixedSizeArrayAttribute
                 && fieldType.GetCustomAttribute<InlineArrayAttribute>() is InlineArrayAttribute inlineArrayAttribute)
             {
@@ -276,13 +279,45 @@ public unsafe partial class DebugRenderer
                 continue;
             }
 
+            // ExcelSheet.ColumnDefinitions
+            if (type == typeof(ExcelSheet) && fieldType == typeof(ExcelSheet.ColumnInfo*) && fieldInfo.Name == nameof(ExcelSheet.ColumnDefinitions))
+            {
+                DrawFieldName(fieldInfo);
+                DrawArray(new Span<ExcelSheet.ColumnInfo>(*(nint**)fieldAddress, ((ExcelSheet*)address)->ColumnCount), fieldNodeOptions);
+                continue;
+            }
+
+            // AgentShop.ItemReceive
+            if (type == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemReceive))
+            {
+                DrawFieldName(fieldInfo);
+                DrawArray(((AgentShop*)address)->ItemReceiveSpan, fieldNodeOptions);
+                continue;
+            }
+
+            // AgentShop.ItemCost
+            if (type == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemCost))
+            {
+                DrawFieldName(fieldInfo);
+                DrawArray(((AgentShop*)address)->ItemCostSpan, fieldNodeOptions);
+                continue;
+            }
+
+            // AgentShop.ItemRetainerBuyback
+            if (type == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemRetainerBuyback))
+            {
+                DrawFieldName(fieldInfo);
+                DrawArray(((AgentShop*)address)->ItemRetainerBuybackSpan, fieldNodeOptions);
+                continue;
+            }
+
             // ByteColor.RGBA
             if (type == typeof(ByteColor) && fieldType == typeof(uint) && fieldInfo.Name == nameof(ByteColor.RGBA))
             {
                 var color = *(ByteColor*)fieldAddress;
 
                 DrawFieldName(fieldInfo);
-                DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
+                DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
 
                 ImGui.SameLine();
                 ImGuiUtils.DrawCopyableText($"#{color.RGBA:X8}");
@@ -310,7 +345,7 @@ public unsafe partial class DebugRenderer
             if (Inherits<ResourceHandle>(type) && fieldType == typeof(uint) && fieldInfo.Name == nameof(ResourceHandle.FileType))
             {
                 DrawFieldName(fieldInfo);
-                DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
+                DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
                 ImGui.SameLine();
                 var chars = MemoryHelper.ReadString(fieldAddress, 4).ToCharArray();
                 Array.Reverse(chars);
@@ -322,7 +357,7 @@ public unsafe partial class DebugRenderer
             if (Inherits<InventoryItem>(type) && fieldType == typeof(ulong) && fieldInfo.Name == nameof(InventoryItem.CrafterContentId))
             {
                 DrawFieldName(fieldInfo);
-                DrawNumeric(fieldAddress, fieldType, fieldNodeOptions);
+                DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
                 ImGui.SameLine();
                 ImGuiUtils.DrawCopyableText(NameCache.Instance()->GetNameByContentId(*(ulong*)fieldAddress).ToString());
                 continue;
@@ -387,6 +422,14 @@ public unsafe partial class DebugRenderer
                 continue;
             }
 
+            // Math.Size
+            if (fieldType == typeof(FFXIVClientStructs.FFXIV.Common.Math.Size))
+            {
+                DrawFieldName(fieldInfo);
+                DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Size*)fieldAddress).ToString() });
+                continue;
+            }
+
             // TODO: enum values table
 
             DrawFieldName(fieldInfo);
@@ -406,7 +449,7 @@ public unsafe partial class DebugRenderer
         var hasDoc = HasDocumentation(fullName);
         var startPos = ImCursor.ScreenPosition;
 
-        ImGuiUtils.DrawCopyableText(name, new CopyableTextOptions() { NoTooltip = true, TextColor = ColorFieldName });
+        ImGuiUtils.DrawCopyableText(name, new CopyableTextOptions() { NoTooltip = true, TextColor = fieldInfo.IsPrivate ? ColorFieldName with { A = 0.67f } : ColorFieldName });
 
         if (hasDoc)
         {

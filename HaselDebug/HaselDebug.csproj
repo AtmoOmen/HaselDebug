@@ -3,7 +3,7 @@
   <!-- Project settings -->
   <PropertyGroup>
     <Name>HaselDebug</Name>
-    <Version>1.54.0</Version>
+    <Version>1.59.2</Version>
     <Author>Haselnussbomber</Author>
     <RepoUrl>https://github.com/Haselnussbomber/HaselDebug</RepoUrl>
     <Punchline>Various tools to debug things.</Punchline>
@@ -43,9 +43,9 @@
   <!-- NuGet dependencies -->
   <ItemGroup>
     <PackageReference Include="AutoCtor" Version="3.0.0" PrivateAssets="all" ExcludeAssets="compile;runtime" />
-    <PackageReference Include="Injectio" Version="5.2.1" PrivateAssets="all" />
+    <PackageReference Include="Injectio" Version="6.1.0" PrivateAssets="all" />
     <PackageReference Include="Iced" Version="1.21.0" />
-    <PackageReference Include="YamlDotNet" Version="17.0.1" />
+    <PackageReference Include="YamlDotNet" Version="17.1.0" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.275" PrivateAssets="All" />
   </ItemGroup>
 

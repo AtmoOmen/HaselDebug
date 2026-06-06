@@ -10,11 +10,11 @@ public partial class DebugRenderer
         nodeOptions = nodeOptions.WithAddress(address);
 
         var underlyingType = type.GetEnumUnderlyingType();
-        var value = DrawNumeric(address, underlyingType, nodeOptions);
+        var value = DrawPointerNumber(address, underlyingType, nodeOptions);
         if (value == null)
             return;
 
-        if (type.GetCustomAttribute<FlagsAttribute>() != null)
+        if (Attribute.IsDefined(type, typeof(FlagsAttribute)))
         {
             ImGui.SameLine();
             ImGui.Text(" - "u8);

@@ -148,7 +148,10 @@ public unsafe partial class AtkDebugRenderer
 
         // Callback
         var atkModule = RaptureAtkModule.Instance();
-        if (atkModule->AddonCallbackMapping.TryGetValue(unitBase->Id, out var addonCallbackEntry, false))
+        var callbackAddonId = unitBase->ParentId;
+        if (callbackAddonId == 0)
+            callbackAddonId = unitBase->Id;
+        if (atkModule->AddonCallbackMapping.TryGetValue(callbackAddonId, out var addonCallbackEntry, false))
         {
             var agentFound = false;
 
@@ -380,7 +383,7 @@ public unsafe partial class AtkDebugRenderer
 
         ImGui.Text("NodeId:"u8);
         ImGui.SameLine();
-        _debugRenderer.DrawNumeric(node->NodeId, typeof(uint), new NodeOptions() { HexOnShift = true });
+        _debugRenderer.DrawNumber(node->NodeId, new NodeOptions() { HexOnShift = true });
 
         PrintProperties(node);
         PrintEvents(node, nodeOptions);

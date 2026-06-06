@@ -1,10 +1,87 @@
 # Changelog
 
-## [Unreleased]
+## [1.59.2] (2026-06-02)
+
+Update for Patch 7.51.
+
+- **Updated:** ClientStructs now at [5deef083](https://github.com/aers/FFXIVClientStructs/tree/5deef083) ([compare](https://github.com/aers/FFXIVClientStructs/compare/af278e8f..5deef083)).
+
+## [1.59.1] (2026-05-29)
+
+- **Fixed:** The callback handler of an addon is now properly resolved via ParentId, if set.
+- **Updated:** ClientStructs now at [af278e8f](https://github.com/aers/FFXIVClientStructs/tree/af278e8f) ([compare](https://github.com/aers/FFXIVClientStructs/compare/9f95801b..af278e8f)).
+
+## [1.59.0] (2026-05-28)
+
+- **Added:** An Exd Module tab for checking out sheets in ExdModule.
+- **Updated:** Private fields are now displayed with a dimmed green color.
+- **Updated:** The following types now have special handling:
+  - `ExcelSheet.ColumnDefinitions` is now drawn as array.
+  - `FileAccessPath` is now drawn as string.
+  - The TreeNode of a `Math.Size` now shows the dimensions.
+  - ILayoutInstances with type `InstanceType.EnvLocation` are now drawn resolved as `EnvLocationLayoutInstance`.
+- **Updated:** May have improved performance by using `Attribute.IsDefined` more.
+- **Fixed:** `AgentInterface` can no longer be pinned by accident.
+- **Updated:** ClientStructs now at [9f95801b](https://github.com/aers/FFXIVClientStructs/tree/9f95801b) ([compare](https://github.com/aers/FFXIVClientStructs/compare/1c23f405..9f95801b)).
+
+## [1.58.2] (2026-05-19)
+
+- **Updated:** Clicking on the set name in the Outfits tab now previews the full set.
+- **Updated:** ClientStructs now at [1c23f405](https://github.com/aers/FFXIVClientStructs/tree/1c23f405) ([compare](https://github.com/aers/FFXIVClientStructs/compare/4909a842..1c23f405)).
+
+## [1.58.1] (2026-05-19)
+
+- **Updated:** Gathering Items tab now shows collectible icon on names and has a new Type column (except for Key Items, because I don't care).
+- **Updated:** ClientStructs now at [4909a842](https://github.com/aers/FFXIVClientStructs/tree/4909a842) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b60db3d9..4909a842)).
+
+## [1.58.0] (2026-05-19)
+
+- **Added:** A new unlocks tab Gathering Items.
+- **Fixed:** FixedSizeArray strings were reading until null terminator. This has been limited to the arrays length.
+- **Updated:** Datashare keys for custom node types. (Thanks to @MidoriKami)
+- **Updated:** ClientStructs now at [b60db3d9](https://github.com/aers/FFXIVClientStructs/tree/b60db3d9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/6e03f96a..b60db3d9)).
+
+## [1.57.3] (2026-05-12)
+
+- **Updated:** The Outfits table now has a toggle to only display sets with items storable in the Armoire.
+- **Updated:** The contrast between collected and non-collected items in the Outfits table was improved.
+- **Fixed:** The amount of collected sets didn't take sets stored in the Armoire into account.
+- **Updated:** ClientStructs now at [6e03f96a](https://github.com/aers/FFXIVClientStructs/tree/6e03f96a) ([compare](https://github.com/aers/FFXIVClientStructs/compare/a4901d90..6e03f96a)).
+
+## [1.57.2] (2026-05-10)
+
+- **Fixed:** Inherited fields of classes with multiple inheritance were displayed at incorrect offsets, because only the first vtable was taken into account.
+- **Updated:** ClientStructs now at [a4901d90](https://github.com/aers/FFXIVClientStructs/tree/a4901d90) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b23bf540..a4901d90)).
+
+## [1.57.1] (2026-05-09)
+
+- **Fixed:** The Outfits tab was even more wrong. It's fixed now and now also supports sets storable in the Armoire.
+
+## [1.57.0] (2026-05-09)
+
+- **Added:** Director Update Log tab to inspect data from that packet.
+- **Fixed:** The Outfits tab was displaying unlocked items which are part of a set incorrectly. I hope that works properly now.^^
+- **Updated:** ClientStructs now at [b23bf540](https://github.com/aers/FFXIVClientStructs/tree/b23bf540) ([compare](https://github.com/aers/FFXIVClientStructs/compare/fcb5a932..b23bf540)).
+
+## [1.56.0] (2026-05-03)
+
+- **Added:** The Input tab now has a button to copy the values for the InputId enum.
+- **Added:** The Input tab now compares game values vs. InputId enum and will highlight if they match or not.
+- **Fixed:** The UIColor tab was updated to use new names in the experimental UIColor Lumina sheet.
+- **Updated:** ClientStructs now at [fcb5a932](https://github.com/aers/FFXIVClientStructs/tree/fcb5a932) ([compare](https://github.com/aers/FFXIVClientStructs/compare/d95cb0d6..fcb5a932)).
+
+## [1.55.0] (2026-04-30)
 
 - **Added:** Event Play and Event Yield Log tab to inspect data from those packets.
+- **Added:** A new Lgb Inspector tab to display information of the active layout.
+- **Updated:** Scene.Objects are now highlighted when hovering over them.
+- **Updated:** The following Scene.Object sub-classes are now resolved based on the type: Terrain, BgObject, VfxObject, Light, EnvSpace, EnvLocation and Decal.
+- **Updated:** The following ILayoutInstance-implementing classes are now resolved based on the type: BgPart, Sound, MapRange, Timeline, CollisionBox and DoorRange.
 - **Updated:** The type of AtkValues is now shown.
-- **Updated:** ClientStructs now at [fa8345a1](https://github.com/aers/FFXIVClientStructs/tree/fa8345a1) ([compare](https://github.com/aers/FFXIVClientStructs/compare/9c7551ac..fa8345a1)).
+- **Updated:** The Unlock Span Length Test now also lists `UIState.TitleList.UnlockedTitles`, which is a BitArray now.
+- **Fixed:** Names in Atk Handler Calls tab tab were updated (their index shifted by 1 this patch).
+- **Fixed:** Clicking on BitField addresses while holding shift copied an incorrect address.
+- **Updated:** ClientStructs now at [d95cb0d6](https://github.com/aers/FFXIVClientStructs/tree/d95cb0d6) ([compare](https://github.com/aers/FFXIVClientStructs/compare/9c7551ac..d95cb0d6)).
 
 ## [1.54.0] (2026-04-07)
 
@@ -856,7 +933,19 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.54.0...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.2...main
+[1.59.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.1...v1.59.2
+[1.59.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.0...v1.59.1
+[1.59.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.58.2...v1.59.0
+[1.58.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.58.1...v1.58.2
+[1.58.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.58.0...v1.58.1
+[1.58.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.57.3...v1.58.0
+[1.57.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.57.2...v1.57.3
+[1.57.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.57.1...v1.57.2
+[1.57.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.57.0...v1.57.1
+[1.57.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.56.0...v1.57.0
+[1.56.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.55.0...v1.56.0
+[1.55.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.53.0...v1.54.0
 [1.53.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.52.0...v1.53.0
 [1.52.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.51.1...v1.52.0

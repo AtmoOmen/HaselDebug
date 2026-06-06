@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.LayoutEngine;
 using FFXIVClientStructs.FFXIV.Client.Sound;
+using FFXIVClientStructs.FFXIV.Client.System.File;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
@@ -189,6 +190,11 @@ public unsafe partial class DebugRenderer
             ImGuiUtils.DrawCopyableText(((StdString*)address)->ToString());
             return;
         }
+        else if (type == typeof(FileAccessPath))
+        {
+            ImGuiUtils.DrawCopyableText(((FileAccessPath*)address)->ToString());
+            return;
+        }
         else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(StdVector<>))
         {
             DrawStdVector(address, type.GenericTypeArguments[0], options);
@@ -226,7 +232,7 @@ public unsafe partial class DebugRenderer
         }
         else if (type.IsNumericType())
         {
-            DrawNumeric(address, type, options);
+            DrawPointerNumber(address, type, options);
             return;
         }
         else if (type.IsStruct() || type.IsClass)

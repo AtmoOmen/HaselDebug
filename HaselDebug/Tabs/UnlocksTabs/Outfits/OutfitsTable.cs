@@ -1,7 +1,4 @@
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
 
@@ -18,6 +15,9 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
     private readonly ItemsColumn _itemsColumn;
     private readonly IClientState _clientState;
     private readonly ItemService _itemService;
+    private readonly MirageService _mirageService;
+    private readonly CabinetService _cabinetService;
+    public bool ArmoireOnly;
 
     [AutoPostConstruct]
     public void Initialize()
@@ -27,6 +27,8 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
             _setColumn,
             _itemsColumn,
         ];
+
+        _setColumn.Table = this;
 
         Flags |= ImGuiTableFlags.SortTristate;
 
@@ -51,10 +53,10 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
         return IconSize * ImStyle.Scale + ImStyle.ItemSpacing.Y; // I honestly don't know why using ItemSpacing here works
     }
 
-    public override unsafe void LoadRows()
+    public override void LoadRows()
     {
-        var agent = AgentTryon.Instance();
-        var cabinetSheet = _excelService.GetSheet<Cabinet>().Select(row => row.Item.RowId).ToArray();
+        Rows.Clear();
+
         foreach (var row in _excelService.GetSheet<MirageStoreSetItem>())
         {
             // is valid set item
@@ -65,12 +67,12 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
             if (row.Items.All(i => i.RowId == 0))
                 continue;
 
-            // does not only consist of cabinet items
-            if (row.Items.Where(i => i.RowId != 0).All(i => cabinetSheet.Contains(i.RowId)))
-                continue;
-
             // does not only consist of items that can't be worn
             if (row.Items.Where(i => i.RowId != 0).All(i => !_itemService.CanTryOn(i.Value.RowId)))
+                continue;
+
+            // apply Cabinet filter, if ticked
+            if (ArmoireOnly && !row.Items.Any(item => _cabinetService.TryGetCabinetId(item, out _)))
                 continue;
 
             Rows.Add(row);
@@ -93,39 +95,19 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
         }
     }
 
-    public static unsafe bool TryGetSetItemBitArray(MirageStoreSetItem row, out BitArray bitArray)
+    public bool IsSetCollected(MirageStoreSetItem row)
     {
-        var mirageManager = MirageManager.Instance();
-        if (mirageManager->PrismBoxLoaded)
-        {
-            var prismBoxItemIndex = mirageManager->PrismBoxItemIds.IndexOf(row.RowId);
-            if (prismBoxItemIndex == -1)
-            {
-                bitArray = default;
-                return false;
-            }
-            bitArray = new BitArray(mirageManager->PrismBoxStain0Ids.GetPointer(prismBoxItemIndex), row.Items.Count);
-            return true;
-        }
+        var isFullSetCollected = _mirageService.IsFullSetCollected(row.RowId);
 
-        var itemFinderModule = ItemFinderModule.Instance();
-        var glamourDresserIndex = itemFinderModule->GlamourDresserItemIds.IndexOf(row.RowId);
-        if (glamourDresserIndex == -1)
-        {
-            bitArray = default;
-            return false;
-        }
-        bitArray = new BitArray((byte*)itemFinderModule->GlamourDresserItemSetUnlockBits.GetPointer(glamourDresserIndex), row.Items.Count);
-        return true;
-    }
+        var isFullCabinetSet = row.Items
+            .Where(item => item.RowId != 0 && item.IsValid)
+            .All(item => _cabinetService.TryGetCabinetId(item, out _));
 
-    public static unsafe bool IsItemInDresser(ItemHandle item)
-    {
-        var mirageManager = MirageManager.Instance();
-        var items = mirageManager->PrismBoxLoaded
-            ? mirageManager->PrismBoxItemIds
-            : ItemFinderModule.Instance()->GlamourDresserItemIds;
-        return items.Contains(item.BaseItemId) || items.Contains(item.BaseItemId + (uint)ItemKind.Hq);
+        var isFullCabinetSetCollected = isFullCabinetSet && row.Items
+            .Where(item => item.RowId != 0 && item.IsValid)
+            .All(item => _cabinetService.IsItemCollected(item));
+
+        return isFullSetCollected || isFullCabinetSetCollected;
     }
 
     public static unsafe bool IsItemInInventory(ItemHandle item)

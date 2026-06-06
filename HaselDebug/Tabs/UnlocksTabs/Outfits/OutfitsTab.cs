@@ -3,27 +3,38 @@ using HaselDebug.Interfaces;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits;
 
-[RegisterSingleton<IUnlockTab>(Duplicate = DuplicateStrategy.Append)]
-public class OutfitsTab(OutfitsTable table) : DebugTab, IUnlockTab
+[RegisterSingleton<IUnlockTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
+public partial class OutfitsTab : DebugTab, IUnlockTab
 {
+    private readonly OutfitsTable _table;
+    private readonly ExcelService _excelService;
+
     public override string Title => "Outfits";
 
     public UnlockProgress GetUnlockProgress()
     {
-        if (table.Rows.Count == 0)
-            table.LoadRows();
+        if (_table.Rows.Count == 0)
+            _table.LoadRows();
 
         return new UnlockProgress()
         {
-            TotalUnlocks = table.Rows.Count,
-            NumUnlocked = table.Rows.Count(row => OutfitsTable.IsItemInDresser(row.Set)),
+            TotalUnlocks = _table.Rows.Count,
+            NumUnlocked = _table.Rows.Count(_table.IsSetCollected),
         };
     }
 
     public override void Draw()
     {
-        var numCollectedSets = table.Rows.Count(row => OutfitsTable.IsItemInDresser(row.Set));
-        ImGui.Text($"{numCollectedSets} out of {table.Rows.Count} filtered sets collected");
-        table.Draw();
+        var numCollectedSets = _table.Rows.Count(_table.IsSetCollected);
+
+        ImGui.Text($"{numCollectedSets} sets collected. {_table.Rows.Count} of {_excelService.GetRowCount<MirageStoreSetItem>()} rows shown");
+
+        if (ImGui.Checkbox("Only show sets that have items which can be stored in the Armoire"u8, ref _table.ArmoireOnly))
+        {
+            _table.LoadRows();
+            _table.IsFilterDirty = true;
+        }
+
+        _table.Draw();
     }
 }

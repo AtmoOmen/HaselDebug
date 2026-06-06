@@ -1,4 +1,5 @@
 using System.Text;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Extensions;
@@ -12,7 +13,10 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
     private const float IconSize = OutfitsTable.IconSize;
 
     private readonly ITextureProvider _textureProvider;
+    private readonly MirageService _mirageService;
+    private readonly CabinetService _cabinetService;
     private readonly TextService _textService;
+    private readonly ExcelService _excelService;
     private readonly UnlocksTabUtils _unlocksTabUtils;
 
     private readonly StringBuilder _stringBuilder = new();
@@ -33,13 +37,10 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
         return _stringBuilder.ToString();
     }
 
-    public override void DrawColumn(MirageStoreSetItem row)
+    public override unsafe void DrawColumn(MirageStoreSetItem row)
     {
-        var isSetInGlamourDresser = OutfitsTable.TryGetSetItemBitArray(row, out var bitArray);
-        var isFullSetCollected = isSetInGlamourDresser && row.Items
-            .Index()
-            .Where((kv) => kv.Item.RowId != 0)
-            .All((kv) => bitArray.TryGet(kv.Index, out var slotLocked) && !slotLocked);
+        var isFullSetCollected = _mirageService.IsFullSetCollected(row.RowId);
+        ref var cabinet = ref UIState.Instance()->Cabinet;
 
         for (var slotIndex = 0; slotIndex < row.Items.Count; slotIndex++)
         {
@@ -48,9 +49,12 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
                 continue;
 
             var isItemInInventory = OutfitsTable.IsItemInInventory(item);
-            var isItemInDresser = OutfitsTable.IsItemInDresser(item);
-            var isItemCollectedInPartialSet = bitArray.TryGet(slotIndex, out var slotLocked) && !slotLocked;
-            var isItemCollected = isFullSetCollected || isItemCollectedInPartialSet;
+            var isItemInDresser = _mirageService.IsItemCollected(item);
+            var isItemCollectedInPartialSet = _mirageService.IsSetSlotCollected(row.RowId, slotIndex);
+            var isCabinetSupported = _cabinetService.TryGetCabinetId(item, out _);
+            var isItemInCabinet = isCabinetSupported && _cabinetService.IsItemCollected(item);
+
+            var isItemCollected = isFullSetCollected || isItemCollectedInPartialSet || isItemInCabinet || isItemInDresser || isItemInInventory;
 
             ImGui.Dummy(ImGuiHelpers.ScaledVector2(IconSize));
             var afterIconPos = ImCursor.Position;
@@ -60,10 +64,10 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
                 (uint)item.Value.Icon,
                 new(IconSize * ImStyle.Scale)
                 {
-                    TintColor = isItemCollected || isItemInDresser || isItemInInventory
+                    TintColor = isItemCollected
                         ? Color.White
                         : ImGui.IsItemHovered() || ImGui.IsPopupOpen($"###SetItem_{row.RowId}_{item.RowId}_ItemContextMenu")
-                            ? Color.White : Color.Text600
+                            ? Color.White : (Color.White with { A = 0.333f })
                 }
             );
 
@@ -79,6 +83,7 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
                         _ when isFullSetCollected => _textService.GetAddonText(15643), // Used as part of an outfit glamour.
                         _ when isItemCollectedInPartialSet => _textService.GetAddonText(15636), // Outfit Glamour-ready Item
                         _ when isItemInDresser => "In Glamour Dresser",
+                        _ when isItemInCabinet => "In Armoire",
                         _ when isItemInInventory => "In Inventory",
                         _ => "",
                     });
@@ -96,7 +101,7 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
                 builder.AddOpenOnGarlandTools("item", item.RowId);
             });
 
-            if (!isFullSetCollected && (isItemCollected || isItemInDresser || isItemInInventory))
+            if (!isFullSetCollected && isItemCollected)
             {
                 ImGui.SameLine(0, 0);
                 var dotSize = IconSize / 5f * ImStyle.Scale;
@@ -106,6 +111,7 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
                     {
                         _ when isItemCollectedInPartialSet => Color.Green.ToUInt(), // Outfit Glamour-ready Item
                         _ when isItemInDresser => Color.Orange.ToUInt(), // In Glamour Dresser
+                        _ when isCabinetSupported && !isItemInCabinet => Color.Orange.ToUInt(), // In Inventory
                         _ when isItemInInventory => Color.Yellow.ToUInt(), // In Inventory
                         _ => Color.Transparent.ToUInt(),
                     });

@@ -37,7 +37,7 @@ public partial class TypeService : IHostedService
         LoadInstances(csAssembly);
 
         CustomNodeTypes = _pluginInterface
-            .GetOrCreateData("KamiToolKitAllocatedNodes", () => new ConcurrentDictionary<nint, Type>());
+            .GetOrCreateData("TypeMappedCustomNodes", () => new ConcurrentDictionary<nint, Type>());
 
         _loadedTcs.SetResult();
         return Task.CompletedTask;
@@ -45,7 +45,7 @@ public partial class TypeService : IHostedService
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _pluginInterface.RelinquishData("KamiToolKitAllocatedNodes");
+        _pluginInterface.RelinquishData("TypeMappedCustomNodes");
         return Task.CompletedTask;
     }
 
@@ -119,10 +119,15 @@ public partial class TypeService : IHostedService
     {
         foreach (var fieldInfo in type.GetFields(BindingFlags.Default | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
         {
+            if (!Attribute.IsDefined(fieldInfo, typeof(FieldOffsetAttribute)))
+                continue;
+
             if (fieldInfo.GetCustomAttribute<FieldOffsetAttribute>() is not { } fieldOffsetAttribute)
                 continue;
 
             if (fieldInfo.IsAssembly
+                && Attribute.IsDefined(fieldInfo, typeof(FixedSizeArrayAttribute))
+                && Attribute.IsDefined(fieldInfo.FieldType, typeof(InlineArrayAttribute))
                 && fieldInfo.GetCustomAttribute<FixedSizeArrayAttribute>() is FixedSizeArrayAttribute fixedSizeArrayAttribute
                 && !fixedSizeArrayAttribute.IsString
                 && !fixedSizeArrayAttribute.IsBitArray

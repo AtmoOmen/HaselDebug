@@ -8,6 +8,9 @@ public unsafe partial class DebugRenderer
 {
     public void DrawFixedSizeArray(nint address, Type type, bool isString, NodeOptions nodeOptions)
     {
+        if (!Attribute.IsDefined(type, typeof(InlineArrayAttribute)))
+            return;
+
         if (type.GetCustomAttribute<InlineArrayAttribute>() is not InlineArrayAttribute inlineArrayAttribute)
             return;
 
@@ -24,9 +27,18 @@ public unsafe partial class DebugRenderer
         if (isString)
         {
             if (fieldType == typeof(char))
-                ImGui.Text(new string((char*)address));
+            {
+                var span = new ReadOnlySpan<char>((void*)address, elementCount);
+                ImGui.Text(new string(span));
+            }
             else
-                DrawSeString((byte*)address, nodeOptions);
+            {
+                var rawSpan = new ReadOnlySpan<byte>((void*)address, elementCount);
+                var ntPos = rawSpan.IndexOf((byte)0);
+                var length = ntPos >= 0 ? ntPos : elementCount;
+                var span = rawSpan[..length];
+                DrawSeString((ReadOnlySeStringSpan)span, nodeOptions);
+            }
 
             return;
         }
