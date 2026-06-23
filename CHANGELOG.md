@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.60.0] (2026-06-23)
+
+Update for Patch 7.51 HotFix 2.
+
+- **Added:** A new Prepare Zoning Log tab.
+- **Added:** A new known string pointer `WarpInfo.TerritoryTypeBg`.
+- **Updated:** ILayoutInstances with type `InstanceType.ExitRange` are now drawn resolved as `ExitRangeLayoutInstance`.
+- **Updated:** ILayoutInstances with type `InstanceType.LineVfx` are now drawn resolved as `LineVfxLayoutInstance`.
+- **Updated:** ClientStructs now at [bd339349](https://github.com/aers/FFXIVClientStructs/tree/bd339349) ([compare](https://github.com/aers/FFXIVClientStructs/compare/04d9d3df..bd339349)).
+
+## [1.59.4] (2026-06-17)
+
+- **Updated:** ProcessInfoService is now disposing faster.
+- **Updated:** ClientStructs now at [04d9d3df](https://github.com/aers/FFXIVClientStructs/tree/04d9d3df) ([compare](https://github.com/aers/FFXIVClientStructs/compare/bad8d3f2..04d9d3df)).
+
+## [1.59.3] (2026-06-02)
+
+Update for Patch 7.51 HotFix.
+
+- **Added:** Actor Cast Packet Log tab to inspect data from that packet.
+- **Updated:** Added `RaptureAtkModule.NamePlateInfo.NameOverride` as known string pointer.
+- **Fixed:** FixedSizeArray strings were not reading until null terminator withing the array length.
+- **Updated:** ClientStructs now at [bad8d3f2](https://github.com/aers/FFXIVClientStructs/tree/bad8d3f2) ([compare](https://github.com/aers/FFXIVClientStructs/compare/5deef083..bad8d3f2)).
+
 ## [1.59.2] (2026-06-02)
 
 Update for Patch 7.51.
@@ -933,7 +957,10 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.2...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.0...main
+[1.60.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.4...v1.60.0
+[1.59.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.3...v1.59.4
+[1.59.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.2...v1.59.3
 [1.59.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.1...v1.59.2
 [1.59.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.0...v1.59.1
 [1.59.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.58.2...v1.59.0

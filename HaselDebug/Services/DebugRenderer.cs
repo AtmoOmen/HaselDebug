@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Collections.Specialized;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.LayoutEngine;
 using FFXIVClientStructs.FFXIV.Client.Sound;
 using FFXIVClientStructs.FFXIV.Client.System.File;
@@ -33,7 +34,9 @@ public unsafe partial class DebugRenderer
         { typeof(FFXIVClientStructs.FFXIV.Client.UI.Agent.MapMarkerBase), ["Subtext"] },
         { typeof(FFXIVClientStructs.FFXIV.Common.Component.Excel.ExcelSheet), ["SheetName"] },
         { typeof(WorldHelper.World), ["Name"] },
-        { typeof(AtkTextNode), ["OriginalTextPointer"] }
+        { typeof(AtkTextNode), ["OriginalTextPointer"] },
+        { typeof(RaptureAtkModule.NamePlateInfo), ["NameOverride"] },
+        { typeof(WarpInfo), ["TerritoryTypeBg"] }
     };
 
     private readonly ILogger<DebugRenderer> _logger;
