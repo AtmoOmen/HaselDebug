@@ -13,6 +13,7 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
     private readonly ExcelService _excelService;
     private readonly TextService _textService;
     private readonly TeleportService _teleportService;
+    private readonly MapService _mapService;
 
     public override bool DrawInChild => false;
 
@@ -59,6 +60,15 @@ public unsafe partial class SatisfactionSupplyTab : DebugTab
                 {
                     Telepo.Instance()->Teleport(aetheryte.RowId, 0);
                 }
+                ImGuiContextMenu.Draw($"SatisfactionSupplyTeleportContextMenu_{row.RowId}", builder =>
+                {
+                    builder.Add(new ImGuiContextMenuEntry()
+                    {
+                        Label = "Open on Map",
+                        Enabled = level.Map.Value.PriorityUI != 0,
+                        ClickCallback = () => _mapService.OpenMap(level)
+                    });
+                });
             }
             else
             {

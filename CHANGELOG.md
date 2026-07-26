@@ -1,5 +1,47 @@
 # Changelog
 
+## [Unreleased]
+
+- **Updated:** ClientStructs now at [aa412b80](https://github.com/aers/FFXIVClientStructs/tree/aa412b80) ([compare](https://github.com/aers/FFXIVClientStructs/compare/af24e2e9..aa412b80)).
+
+## [1.63.0] (2026-07-15)
+
+- **Added:** The Config tab now has a tab to inspect the DevConfig.
+- **Updated:** ClientStructs now at [af24e2e9](https://github.com/aers/FFXIVClientStructs/tree/af24e2e9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/dbe41718..af24e2e9)).
+
+## [1.62.1] (2026-07-09)
+
+- **Added:** A context menu was added to the Beast Tribes and Custom Deliveries names to open the location on the map.
+- **Fixed:** The coordinates of the closest aetherytes (used for Beast Tribes and Custom Deliveries) were not calculated correctly.
+
+## [1.62.0] (2026-07-09)
+
+- **Added:** ResourceHandler type redirects based their the FileType.
+- **Added:** Toast tab to log the different toasts. (Thanks to @Jaksuhn)
+  - I have reworked the implementation to not use Dalamuds IToastGui service and instead hook the functions directly. Sorry if this is not what you wanted.
+- **Updated:** ClientStructs now at [dbe41718](https://github.com/aers/FFXIVClientStructs/tree/dbe41718) ([compare](https://github.com/aers/FFXIVClientStructs/compare/cb804dc0..dbe41718)).
+
+## [1.61.1] (2026-07-06)
+
+- **Updated:** TreeNodes for AtkComponentTreeListItem now display their first string as label for simpler identification.
+- **Updated:** ClientStructs now at [cb804dc0](https://github.com/aers/FFXIVClientStructs/tree/cb804dc0) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b81ab14d..cb804dc0)).
+
+## [1.61.0] (2026-06-26)
+
+- **Added:** Event Complete Log tab to inspect data passed to the `PacketDispatcher.SendEventCompletePacket` function.
+- **Updated:** Lgb Inspector: Reworked to show all layouts in their own tab (Global, Active, Unk28, Prefetch).
+- **Fixed:** Lgb Inspector: Non-active instances are now expandable.
+- **Fixed:** Lgb Inspector: Instances with the same InstanceKey and LayerKey are now expandable. For that u0 and SubId were added to the TreeNodes label.
+- **Updated:** ClientStructs now at [b81ab14d](https://github.com/aers/FFXIVClientStructs/tree/b81ab14d) ([compare](https://github.com/aers/FFXIVClientStructs/compare/bd339349..b81ab14d)).
+
+## [1.60.3] (2026-06-23)
+
+- **Fixed:** The TypeBase type was incorrect now. I'm not paying enough attention.
+
+## [1.60.2] (2026-06-23)
+
+- **Fixed:** The plugin wouldn't load properly due to outdated sig for TypeBase in the Inventory Operations tab.
+
 ## [1.60.1] (2026-06-23)
 
 - **Updated:** ILayoutInstances with type `InstanceType.PrefetchRange` are now drawn resolved as `PrefetchRangeLayoutInstance`. I forgot.
@@ -961,7 +1003,14 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.1...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.63.0...main
+[1.63.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.62.1...v1.63.0
+[1.62.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.62.0...v1.62.1
+[1.62.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.61.1...v1.62.0
+[1.61.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.61.0...v1.61.1
+[1.61.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.3...v1.61.0
+[1.60.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.2...v1.60.3
+[1.60.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.1...v1.60.2
 [1.60.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.60.0...v1.60.1
 [1.60.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.4...v1.60.0
 [1.59.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.59.3...v1.59.4
