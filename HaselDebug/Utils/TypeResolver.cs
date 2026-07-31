@@ -112,6 +112,20 @@ public static unsafe class TypeResolver
                     type = typeof(BgPartsLayoutInstance);
                     break;
 
+                case InstanceType.Attribute:
+                    break;
+
+                case InstanceType.Light:
+                    type = typeof(LightLayoutInstance);
+                    break;
+
+                case InstanceType.Vfx:
+                    type = typeof(VfxLayoutInstance);
+                    break;
+
+                case InstanceType.PositionMarker:
+                    break;
+
                 case InstanceType.SharedGroup:
                     type = typeof(SharedGroupLayoutInstance);
                     break;
@@ -120,20 +134,91 @@ public static unsafe class TypeResolver
                     type = typeof(SoundLayoutInstance);
                     break;
 
+                case InstanceType.EventNpc:
+                    type = typeof(EventNpcLayoutInstance);
+                    break;
+
+                case InstanceType.BattleNpc:
+                    type = typeof(BattleNpcLayoutInstance);
+                    break;
+
+                case InstanceType.RoutePath:
+                    break;
+
+                case InstanceType.Character:
+                    type = typeof(CharacterLayoutInstance);
+                    break;
+
+                case InstanceType.Aetheryte:
+                    type = typeof(AetheryteLayoutInstance);
+                    break;
+
+                case InstanceType.EnvSpace:
+                    type = typeof(EnvSpaceLayoutInstance);
+                    break;
+
+                case InstanceType.Gathering:
+                    type = typeof(GatheringLayoutInstance);
+                    break;
+
+                case InstanceType.HelperObject:
+                    break;
+
+                case InstanceType.Treasure:
+                    type = typeof(TreasureLayoutInstance);
+                    break;
+
+                case InstanceType.Player:
+                case InstanceType.Monster:
+                    break;
+
+                case InstanceType.Weapon:
+                    type = typeof(WeaponLayoutInstance);
+                    break;
+
+                case InstanceType.PopRange:
+                    type = typeof(PopRangeLayoutInstance);
+                    break;
+
                 case InstanceType.ExitRange:
                     type = typeof(ExitRangeLayoutInstance);
+                    break;
+
+                case InstanceType.Lvb:
                     break;
 
                 case InstanceType.MapRange:
                     type = typeof(MapRangeLayoutInstance);
                     break;
 
+                case InstanceType.NaviMeshRange:
+                    break;
+
+                case InstanceType.EventObject:
+                    type = typeof(EventObjectLayoutInstance);
+                    break;
+
+                case InstanceType.DemiHuman:
+                    break;
+
                 case InstanceType.EnvLocation:
                     type = typeof(EnvLocationLayoutInstance);
                     break;
 
+                case InstanceType.ControlPoint:
+                case InstanceType.EventRange:
+                case InstanceType.RestBonusRange:
+                case InstanceType.QuestMarker:
+                    break;
+
                 case InstanceType.Timeline:
                     type = typeof(TimeLineLayoutInstance);
+                    break;
+
+                case InstanceType.ObjectBehaviorSet:
+                case InstanceType.Movie:
+                case InstanceType.ScenarioExd:
+                case InstanceType.ScenarioText:
                     break;
 
                 case InstanceType.CollisionBox:
@@ -148,8 +233,40 @@ public static unsafe class TypeResolver
                     type = typeof(LineVfxLayoutInstance);
                     break;
 
+                case InstanceType.SoundEnvSet:
+                case InstanceType.CutActionTimeline:
+                case InstanceType.CharaScene:
+                case InstanceType.CutAction:
+                case InstanceType.EquipPreset:
+                case InstanceType.ClientPath:
+                case InstanceType.ServerPath:
+                case InstanceType.GimmickRange:
+                case InstanceType.TargetMarker:
+                    break;
+
+                case InstanceType.ChairMarker:
+                    type = typeof(ChairMarkerLayoutInstance);
+                    break;
+
+                case InstanceType.ClickableRange:
+                    type = typeof(ClickableRangeLayoutInstance);
+                    break;
+
                 case InstanceType.PrefetchRange:
                     type = typeof(PrefetchRangeLayoutInstance);
+                    break;
+
+                case InstanceType.FateRange:
+                    type = typeof(FateRangeLayoutInstance);
+                    break;
+
+                case InstanceType.PartyMember:
+                case InstanceType.KeepRange:
+                case InstanceType.SphereCastRange:
+                case InstanceType.IndoorObject:
+                case InstanceType.OutdoorObject:
+                case InstanceType.EditGroup:
+                case InstanceType.StableChocobo:
                     break;
             }
         }

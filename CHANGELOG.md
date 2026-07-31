@@ -1,8 +1,51 @@
 # Changelog
 
-## [Unreleased]
+## [1.66.0] (2026-07-30)
 
-- **Updated:** ClientStructs now at [aa412b80](https://github.com/aers/FFXIVClientStructs/tree/aa412b80) ([compare](https://github.com/aers/FFXIVClientStructs/compare/af24e2e9..aa412b80)).
+- **Added:** A Chara Card Packet Log tab to inspect data from that packet.
+- **Added:** Unlock Span Length Test tab now supports PlayerState.UnlockedFramersKitsBitArray.
+- **Added:** ILayoutInstances type redirects for the following types:
+  - LightLayoutInstance
+  - VfxLayoutInstance
+  - EventNpcLayoutInstance
+  - BattleNpcLayoutInstance
+  - CharacterLayoutInstance
+  - AetheryteLayoutInstance
+  - EnvSpaceLayoutInstance
+  - GatheringLayoutInstance
+  - WeaponLayoutInstance
+  - EventObjectLayoutInstance
+  - ChairMarkerLayoutInstance
+  - ClickableRangeLayoutInstance
+  - FateRangeLayoutInstance
+- **Updated:** ClientStructs now at [4a00dc68](https://github.com/aers/FFXIVClientStructs/tree/4a00dc68) ([compare](https://github.com/aers/FFXIVClientStructs/compare/cc474ca9..4a00dc68)).
+
+## [1.65.2] (2026-07-28)
+
+- **Added:** ILayoutInstances type redirect for TreasureLayoutInstance.
+- **Added:** ILayoutInstances type redirect for types Aetheryte, Gathering, EventObject and Character. These are currently using the parent class GameObjectLayoutInstance.
+- **Fixed:** Active ILayoutInstances were greyed out. (That still doesn't mean active ones are visible, hmm..)
+- **Updated:** ClientStructs now at [cc474ca9](https://github.com/aers/FFXIVClientStructs/tree/cc474ca9) ([compare](https://github.com/aers/FFXIVClientStructs/compare/3e2b738f..cc474ca9)).
+
+## [1.65.1] (2026-07-28)
+
+Second update for Patch 7.55.
+
+- **Fixed:** Broken sig in InventoryOperationsTab preventing the plugin from loading.
+- **Updated:** ClientStructs now at [3e2b738f](https://github.com/aers/FFXIVClientStructs/tree/3e2b738f) ([compare](https://github.com/aers/FFXIVClientStructs/compare/b2e56484..3e2b738f)).
+
+## [1.65.0] (2026-07-28)
+
+Update for Patch 7.55.
+
+- **Added:** Fate Reward Log tab to inspect data from that packet.
+- **Updated:** ClientStructs now at [b2e56484](https://github.com/aers/FFXIVClientStructs/tree/b2e56484) ([compare](https://github.com/aers/FFXIVClientStructs/compare/502941fe..b2e56484)).
+
+## [1.64.0] (2026-07-26)
+
+- **Added:** ILayoutInstances type redirect for PopRangeLayoutInstance.
+- **Added:** Support for sequencial structs like System.Numerics.Vector2/3/4.
+- **Updated:** ClientStructs now at [502941fe](https://github.com/aers/FFXIVClientStructs/tree/502941fe) ([compare](https://github.com/aers/FFXIVClientStructs/compare/af24e2e9..502941fe)).
 
 ## [1.63.0] (2026-07-15)
 
@@ -1003,7 +1046,12 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.63.0...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.66.0...main
+[1.66.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.65.2...v1.66.0
+[1.65.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.65.1...v1.65.2
+[1.65.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.65.0...v1.65.1
+[1.65.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.64.0...v1.65.0
+[1.64.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.63.0...v1.64.0
 [1.63.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.62.1...v1.63.0
 [1.62.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.62.0...v1.62.1
 [1.62.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.61.1...v1.62.0
