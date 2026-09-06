@@ -216,6 +216,13 @@
     "en": "Items",
     "de": "Gegenstände"
   },
+  "HaselDebug.Tabs.UnlocksTabs.Outfits.Columns.StoreItemColumn.Label": {
+    "en": "Online Store"
+  },
+  "HaselDebug.Tabs.UnlocksTabs.Outfits.Columns.StoreItemColumn.Tooltip": {
+    "en": "Can be bought on the Online Store",
+    "de": "Kann im Online Store erworben werden"
+  },
   "HaselDebug.Tabs.UnlocksTabs.Outfits.Columns.SetColumn.Label": {
     "en": "Set"
   },
