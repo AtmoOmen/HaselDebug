@@ -40,7 +40,7 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
         _setColumn.Table = this;
         _storeItemColumn.Table = this;
 
-        Flags |= ImGuiTableFlags.SortTristate;
+        Flags |= ImGuiTableFlags.SortTristate | ImGuiTableFlags.Hideable;
 
         _clientState.Login += OnLogin;
     }
