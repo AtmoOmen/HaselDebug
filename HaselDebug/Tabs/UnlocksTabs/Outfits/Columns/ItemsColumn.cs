@@ -77,16 +77,28 @@ public partial class ItemsColumn : ColumnString<MirageStoreSetItem>
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-                _unlocksTabUtils.DrawItemTooltip(item.Value,
-                    description: true switch
-                    {
-                        _ when isFullSetCollected => _textService.GetAddonText(15643), // Used as part of an outfit glamour.
-                        _ when isItemCollectedInPartialSet => _textService.GetAddonText(15636), // Outfit Glamour-ready Item
-                        _ when isItemInDresser => "In Glamour Dresser",
-                        _ when isItemInCabinet => "In Armoire",
-                        _ when isItemInInventory => "In Inventory",
-                        _ => "",
-                    });
+
+                _stringBuilder.Clear();
+
+                if (isFullSetCollected)
+                {
+                    _stringBuilder.AppendLine(_textService.GetAddonText(15643)); // Used as part of an outfit glamour.
+                }
+                else if (isItemCollectedInPartialSet)
+                {
+                    _stringBuilder.AppendLine(_textService.GetAddonText(15636)); // Outfit Glamour-ready Item
+                }
+
+                if (isItemInDresser)
+                    _stringBuilder.AppendLine("In Glamour Dresser");
+
+                if (isItemInCabinet)
+                    _stringBuilder.AppendLine("In Armoire");
+
+                if (isItemInInventory)
+                    _stringBuilder.AppendLine("In Inventory");
+
+                _unlocksTabUtils.DrawItemTooltip(item.Value, description: _stringBuilder.ToString());
             }
 
             ImGuiContextMenu.Draw($"###SetItem_{row.RowId}_{item.RowId}_ItemContextMenu", builder =>
