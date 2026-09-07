@@ -378,15 +378,9 @@ public unsafe partial class DebugRenderer
         if (!_processInfoService.IsPointerValid(node))
             return;
 
-        var scale = 1f;
-        var addon = RaptureAtkUnitManager.Instance()->AtkUnitManager.GetAddonByNodeSafe(node);
-        if (_processInfoService.IsPointerValid(addon))
-            scale *= addon->Scale;
-
         var origin = ImGui.GetMainViewport().Pos + new Vector2(node->ScreenX, node->ScreenY);
-
-        var width = node->Width * scale;
-        var height = node->Height * scale;
+        var width = node->Width;
+        var height = node->Height;
 
         // Define the original rectangle that we will then transform below
         Span<Vector2> localCorners =
@@ -411,8 +405,7 @@ public unsafe partial class DebugRenderer
         }
 
         // Draw transformed bounds via Polyline
-        var drawList = ImGui.GetForegroundDrawList();
-        drawList.AddPolyline(ref screenCorners[0], 4, Color.Gold.ToUInt(), ImDrawFlags.Closed, 1.5f);
+        ImGui.GetForegroundDrawList().AddPolyline(ref screenCorners[0], 4, Color.Gold.ToUInt(), ImDrawFlags.Closed, 1.5f);
     }
 
     private void DrawLineToGamePos(Vector3 pos)
