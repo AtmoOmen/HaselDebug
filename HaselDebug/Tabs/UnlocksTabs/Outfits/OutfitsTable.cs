@@ -1,6 +1,9 @@
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using HaselCommon.Gui.ImGuiTable;
 using HaselDebug.Tabs.UnlocksTabs.Outfits.Columns;
+using LuminaSupplemental.Excel.Model;
+using LuminaSupplemental.Excel.Services;
 
 namespace HaselDebug.Tabs.UnlocksTabs.Outfits;
 
@@ -13,10 +16,15 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
     private readonly ExcelService _excelService;
     private readonly SetColumn _setColumn;
     private readonly ItemsColumn _itemsColumn;
+    private readonly StoreItemColumn _storeItemColumn;
     private readonly IClientState _clientState;
     private readonly ItemService _itemService;
     private readonly MirageService _mirageService;
     private readonly CabinetService _cabinetService;
+    private readonly IDataManager _dataManager;
+
+    private Dictionary<uint, string> _storeItems = [];
+
     public bool ArmoireOnly;
 
     [AutoPostConstruct]
@@ -26,11 +34,13 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
             RowIdColumn<MirageStoreSetItem>.Create(_serviceProvider),
             _setColumn,
             _itemsColumn,
+            _storeItemColumn,
         ];
 
         _setColumn.Table = this;
+        _storeItemColumn.Table = this;
 
-        Flags |= ImGuiTableFlags.SortTristate;
+        Flags |= ImGuiTableFlags.SortTristate | ImGuiTableFlags.Hideable;
 
         _clientState.Login += OnLogin;
     }
@@ -56,6 +66,10 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
     public override void LoadRows()
     {
         Rows.Clear();
+
+        _storeItems = CsvLoader.LoadResource<StoreItem>(CsvLoader.StoreItemResourceName, false, out _, out _, _dataManager.GameData, _dataManager.Language.ToLumina())
+            .DistinctBy(si => si.ItemId)
+            .ToDictionary(si => si.ItemId, si => si.StoreUrl);
 
         foreach (var row in _excelService.GetSheet<MirageStoreSetItem>())
         {
@@ -104,6 +118,16 @@ public partial class OutfitsTable : Table<MirageStoreSetItem>, IDisposable
             .All(item => _cabinetService.IsItemCollected(item));
 
         return isFullSetCollected || isFullCabinetSetCollected;
+    }
+
+    public bool IsStoreSet(MirageStoreSetItem set)
+    {
+        return set.Items.Where(item => item.RowId != 0 && item.IsValid).Any(item => _storeItems.ContainsKey(item.RowId));
+    }
+
+    public string GetStoreUrl(ItemHandle item)
+    {
+        return _storeItems.TryGetValue(item, out var url) ? url : string.Empty;
     }
 
     public static unsafe bool IsItemInInventory(ItemHandle item)

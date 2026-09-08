@@ -4,9 +4,9 @@
     "net10.0-windows7.0": {
       "AutoCtor": {
         "type": "Direct",
-        "requested": "[3.1.0, )",
-        "resolved": "3.1.0",
-        "contentHash": "Wc7TNqq/tQEqHvWPeIdyD4kbrNFhC+2hAjxLqN47QB3aE7z6dWZaE0UnV4JsZzfBGocPP2efchY1tmLvu3tx7Q=="
+        "requested": "[3.1.1, )",
+        "resolved": "3.1.1",
+        "contentHash": "ug8CVTQAlLfqigQIjCr6rsEKK5ma8Llqa60Ou98mL4id6AbKVH5EkCvv0jxGgP5t5iZlZzpX5qPz6T6OiXEfvQ=="
       },
       "DalamudPackager": {
         "type": "Direct",
@@ -28,32 +28,53 @@
       },
       "Injectio": {
         "type": "Direct",
-        "requested": "[6.1.0, )",
-        "resolved": "6.1.0",
-        "contentHash": "UrLWKpGTIliUPzKd0WnBAeXH3haZt7f13DESaWTUnTnpld5wAizlsJ9wwC5H8rs5APlmXIYDxfiDKIjnNpHdcw=="
+        "requested": "[6.2.0, )",
+        "resolved": "6.2.0",
+        "contentHash": "MgtjdaL1LJojuOTG5Wak9/zrQWnk1o2NYFZZlOLX1AMqcvZj7DCIot31N/e7e9e81iEsQRyEV0ClKIdkozqkqA=="
+      },
+      "LuminaSupplemental.Excel": {
+        "type": "Direct",
+        "requested": "[5.1.4, )",
+        "resolved": "5.1.4",
+        "contentHash": "emnlVa7IsrBQZyNsTeQPb6iqtKsTg1Ynm1UDL72QXha0FEKF6WudM6GINlW0VxXvTpe3RL8y/G4E1w53kMV78Q==",
+        "dependencies": {
+          "CSVFile": "3.2.1",
+          "CsvHelper": "30.0.1",
+          "Sylvan.Data.Csv": "1.4.3"
+        }
       },
       "Microsoft.Windows.CsWin32": {
         "type": "Direct",
-        "requested": "[0.3.298, )",
-        "resolved": "0.3.298",
-        "contentHash": "moz/CojV5HSeJYV9pNVE6mWMKnJGvPgdD31EhBLyUJ8Ui06PBrH9oPFK1ljXbJJMM4EzKnkE1a0AtBbH1BHDGA==",
+        "requested": "[0.3.330, )",
+        "resolved": "0.3.330",
+        "contentHash": "6Iu/AuWuGbIo5KaO43gqa5MOxexFph851Wg4IXgkWyjAwIAfjZ89To1YqJ2XpLNWWrvSEpECJ+/h5tZnP061kA==",
         "dependencies": {
           "Microsoft.Windows.SDK.Win32Docs": "0.1.42-alpha",
-          "Microsoft.Windows.SDK.Win32Metadata": "70.0.11-preview",
+          "Microsoft.Windows.SDK.Win32Metadata": "71.0.14-preview",
           "Microsoft.Windows.WDK.Win32Metadata": "0.13.25-experimental"
         }
       },
       "Roslynator.Analyzers": {
         "type": "Direct",
-        "requested": "[4.15.0, )",
-        "resolved": "4.15.0",
-        "contentHash": "E8fu71Y+vzhniJKy1K13Rzwm8Vjcj7CDFBpflqncKUZfc3SzuF0kMBiyMmgXNPkjWTdE3Z+30HlGgYjHONZY/Q=="
+        "requested": "[5.0.0, )",
+        "resolved": "5.0.0",
+        "contentHash": "+J5kR/naCd62IwY2BG9P0QoHnJM8liBUFFAk6jga1t9s61JC3M+ofb3AY3wc73/pdROyKFCURqctQh8WRCIT/w=="
       },
       "YamlDotNet": {
         "type": "Direct",
         "requested": "[18.1.0, )",
         "resolved": "18.1.0",
         "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
+      },
+      "CSVFile": {
+        "type": "Transitive",
+        "resolved": "3.2.1",
+        "contentHash": "hXWPP7BGA8DS+UxdDEjAsLPdo6OUiCdaCiprxuRxpTy3nwI9DqwNWxaC5imfyD3kCb9/S2mW35s7f08uaokTUA=="
+      },
+      "CsvHelper": {
+        "type": "Transitive",
+        "resolved": "30.0.1",
+        "contentHash": "rcZtgbWR+As4G3Vpgx0AMNmShGuQLFjkHAPIIflzrfkJCx8/AOd4m96ZRmiU1Wi39qS5UVjV0P8qdgqOo5Cwyg=="
       },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
@@ -341,8 +362,8 @@
       },
       "Microsoft.Windows.SDK.Win32Metadata": {
         "type": "Transitive",
-        "resolved": "70.0.11-preview",
-        "contentHash": "i8Dv2KCKzH8MQAsgLeUa5zFGyQOoz+TlvnbkFUkjsUtqhj4oguVj9rDpVACs5fLayZbwItOSllf+bhwr+z2yeg=="
+        "resolved": "71.0.14-preview",
+        "contentHash": "39I8YpjHYJF7Qncztn6+cu15Ti35myn5QQnLZwN6AngBsfaU1l3Nsxvt2087AlExLxg5a/llFIRSeahK7GW/Dw=="
       },
       "Microsoft.Windows.WDK.Win32Metadata": {
         "type": "Transitive",
@@ -351,6 +372,11 @@
         "dependencies": {
           "Microsoft.Windows.SDK.Win32Metadata": "63.0.31-preview"
         }
+      },
+      "Sylvan.Data.Csv": {
+        "type": "Transitive",
+        "resolved": "1.4.3",
+        "contentHash": "ZUFTqs5doO9aGrR2g0tjASSfxaMUnsxRBXCYFvDRn74XfIc0PUZ0FYRbI3Yu/4W/IFc/DBKH30OOeZ2xGqGyFQ=="
       },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",

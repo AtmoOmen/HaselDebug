@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using HaselDebug.Abstracts;
@@ -6,14 +7,14 @@ using HaselDebug.Interfaces;
 namespace HaselDebug.Tabs.PacketLogs;
 
 [RegisterSingleton<IPacketLogTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmListingSegmentPacket>, IDisposable
+public unsafe partial class PartyFinderListingLogTab : PacketLogTab<CrossRealmListingSegmentPacket>
 {
     private Hook<InfoProxyCrossRealm.Delegates.ReceiveListing>? _hook;
 
-    public void Dispose()
+    public override ValueTask DisposeAsync()
     {
-        _hook?.Dispose();
         Clear();
+        return new ValueTask(_framework.Run(() => DisposeAndNull(ref _hook)));
     }
 
     private void ReceiveListingDetour(InfoProxyCrossRealm* thisPtr, ServerIpcSegment<CrossRealmListingSegmentPacket>* packet)

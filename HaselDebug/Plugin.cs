@@ -8,30 +8,43 @@ namespace HaselDebug;
 public partial class Plugin : IAsyncDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
-    private readonly IPluginLog _pluginLog;
-    private readonly IFramework _framework;
-    private IHost? _host;
+    private IHost _host;
 
-    public Task LoadAsync(CancellationToken cancellationToken)
+    [AutoPostConstruct]
+    private void Initialize()
     {
-        _pluginInterface.InitializeCustomClientStructs();
-
         _host = new HostBuilder()
             .UseContentRoot(_pluginInterface.AssemblyLocation.Directory!.FullName)
+            .ConfigureHostOptions(options =>
+            {
+                options.ServicesStartConcurrently = true;
+                options.ServicesStopConcurrently = true;
+            })
             .ConfigureServices(services =>
             {
                 services.AddDalamud(_pluginInterface);
-                services.AddConfig(PluginConfig.Load(_pluginInterface, _pluginLog));
+                services.AddConfig(PluginConfig.Load(_pluginInterface));
                 services.AddHaselCommon();
                 services.AddHaselDebug();
             })
             .Build();
-
-        return _host.StartOnFrameworkThread(_framework, cancellationToken);
     }
 
-    public ValueTask DisposeAsync()
+    public Task LoadAsync(CancellationToken cancellationToken)
     {
-        return _host?.StopOnFrameworkThread(_framework) ?? ValueTask.CompletedTask;
+        _pluginInterface.InitializeCustomClientStructs();
+        return _host.StartAsync(cancellationToken);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await _host.StopAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _host.Dispose();
+        }
     }
 }

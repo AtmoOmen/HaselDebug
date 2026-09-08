@@ -100,8 +100,9 @@ public unsafe partial class SetColumn : ColumnString<MirageStoreSetItem>
             builder.AddOpenOnGarlandTools("item", row.Set.RowId);
         });
 
-        ImGui.SameLine(IconSize * ImStyle.Scale + ImStyle.ItemSpacing.X, 0);
-        ImCursor.Y += IconSize * ImStyle.Scale / 2f - ImStyle.TextLineHeight / 2f;
+        var scaledIconSize = IconSize * ImStyle.Scale;
+        ImGui.SameLine(scaledIconSize + ImStyle.ItemSpacing.X, 0);
+        ImCursor.Y += scaledIconSize / 2f - ImStyle.TextLineHeight / 2f;
         ImGui.Text(_textService.GetItemName(row.RowId).ToString());
     }
 }

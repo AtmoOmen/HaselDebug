@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.Network;
 using HaselDebug.Abstracts;
@@ -6,14 +7,14 @@ using HaselDebug.Interfaces;
 namespace HaselDebug.Tabs.PacketLogs;
 
 [RegisterSingleton<IPacketLogTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class SpawnTreasureLogTab : PacketLogTab<SpawnTreasurePacket>, IDisposable
+public unsafe partial class SpawnTreasureLogTab : PacketLogTab<SpawnTreasurePacket>
 {
     private Hook<PacketDispatcher.Delegates.HandleSpawnTreasurePacket>? _hook;
 
-    public void Dispose()
+    public override ValueTask DisposeAsync()
     {
-        _hook?.Dispose();
         Clear();
+        return new ValueTask(_framework.Run(() => DisposeAndNull(ref _hook)));
     }
 
     private void HandleSpawnTreasurePacketDetour(uint targetId, SpawnTreasurePacket* packet)

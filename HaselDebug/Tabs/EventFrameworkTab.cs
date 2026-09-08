@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
@@ -8,12 +9,13 @@ using EventHandler = FFXIVClientStructs.FFXIV.Client.Game.Event.EventHandler;
 namespace HaselDebug.Tabs;
 
 [RegisterSingleton<IDebugTab>(Duplicate = DuplicateStrategy.Append), AutoConstruct]
-public unsafe partial class EventFrameworkTab : DebugTab, IDisposable
+public unsafe partial class EventFrameworkTab : DebugTab, IAsyncDisposable
 {
     private readonly DebugRenderer _debugRenderer;
     private readonly TextService _textService;
     private readonly IGameInteropProvider _gameInteropProvider;
     private readonly NavigationService _navigationService;
+    private readonly IFramework _framework;
 
     private readonly List<(DateTime, nint, EventSceneTaskInterface)> _taskTypeHistory = [];
     private Hook<EventSceneModuleTaskManager.Delegates.AddTask>? _addTaskHook;
@@ -25,16 +27,17 @@ public unsafe partial class EventFrameworkTab : DebugTab, IDisposable
 
     private void Initialize()
     {
-        _addTaskHook = _gameInteropProvider.HookFromAddress<EventSceneModuleTaskManager.Delegates.AddTask>(
-            EventSceneModuleTaskManager.MemberFunctionPointers.AddTask,
-            AddTaskDetour);
-
-        _addTaskHook.Enable();
+        _framework.Run(() =>
+        {
+            _addTaskHook = _gameInteropProvider.EnabledHookFromAddress<EventSceneModuleTaskManager.Delegates.AddTask>(
+                EventSceneModuleTaskManager.MemberFunctionPointers.AddTask,
+                AddTaskDetour);
+        });
     }
 
-    public void Dispose()
+    public ValueTask DisposeAsync()
     {
-        _addTaskHook?.Dispose();
+        return new ValueTask(_framework.Run(() => DisposeAndNull(ref _addTaskHook)));
     }
 
     private void AddTaskDetour(EventSceneModuleTaskManager* thisPtr, EventSceneTaskInterface* task)
@@ -152,6 +155,8 @@ public unsafe partial class EventFrameworkTab : DebugTab, IDisposable
             _debugRenderer.DrawAddress(task);
             ImGui.SameLine();
             ImGui.Text($"Type: {task->Type}, Flags: {task->Flags}");
+            ImGui.SameLine();
+            _debugRenderer.DrawPointerType(task);
         }
 
         ImGui.Separator();

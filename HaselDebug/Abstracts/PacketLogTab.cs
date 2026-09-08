@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using FFXIVClientStructs.FFXIV.Client.System.Memory;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
@@ -5,10 +6,11 @@ using HaselDebug.Services;
 namespace HaselDebug.Abstracts;
 
 [AutoConstruct]
-public partial class PacketLogTab<T> : DebugTab, IPacketLogTab where T : unmanaged
+public unsafe partial class PacketLogTab<T> : DebugTab, IPacketLogTab, IAsyncDisposable where T : unmanaged
 {
     protected readonly DebugRenderer _debugRenderer;
     protected readonly IGameInteropProvider _gameInteropProvider;
+    protected readonly IFramework _framework;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RecordEntry
@@ -23,6 +25,8 @@ public partial class PacketLogTab<T> : DebugTab, IPacketLogTab where T : unmanag
 
     public virtual void Clear()
     {
+        foreach (var record in _records)
+            IMemorySpace.Free(record.Payload, 0);
         _records.Clear();
     }
 
@@ -61,7 +65,7 @@ public partial class PacketLogTab<T> : DebugTab, IPacketLogTab where T : unmanag
         }
     }
 
-    public virtual unsafe void AddRecord(T payload)
+    public virtual void AddRecord(T payload)
     {
         var copy = IMemorySpace.GetDefaultSpace()->Malloc<T>();
         *copy = payload;
@@ -70,5 +74,11 @@ public partial class PacketLogTab<T> : DebugTab, IPacketLogTab where T : unmanag
             Time = DateTime.Now,
             Payload = copy
         });
+    }
+
+    public virtual ValueTask DisposeAsync()
+    {
+        Clear();
+        return ValueTask.CompletedTask;
     }
 }

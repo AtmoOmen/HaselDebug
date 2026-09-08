@@ -221,7 +221,7 @@ public partial class DebugRenderer
             nodeOptions);
     }
 
-    private void DrawExcelColumn(string columnName, Type columnType, object? value, uint rowId, uint depth, NodeOptions nodeOptions)
+    public void DrawExcelColumn(string columnName, Type columnType, object? value, uint rowId, uint depth, NodeOptions nodeOptions)
     {
         if (value == null)
         {
@@ -333,7 +333,12 @@ public partial class DebugRenderer
 
                 ImGui.TableNextColumn(); // Value
                 var colValue = columnType.GetMethod("get_Item")?.Invoke(value, [i]);
-                DrawExcelColumn(columnName + $"[{i}]", collectionType, colValue, rowId, depth + 1, nodeOptions);
+                DrawExcelColumn(columnName + $"[{i}]", collectionType, colValue, rowId, depth + 1, new NodeOptions()
+                {
+                    RenderSeString = nodeOptions.RenderSeString,
+                    Language = nodeOptions.Language,
+                    AddressPath = nodeOptions.AddressPath.With(i)
+                });
             }
 
             return;
@@ -373,7 +378,12 @@ public partial class DebugRenderer
 
                 ImGui.TableNextColumn(); // Value
                 var colValue = columnType.GetMethod("get_Item")?.Invoke(value, [i]);
-                DrawExdSubrow(collectionType, rowId, i, depth + 1, nodeOptions);
+                DrawExdSubrow(collectionType, rowId, i, depth + 1, new NodeOptions()
+                {
+                    RenderSeString = nodeOptions.RenderSeString,
+                    Language = nodeOptions.Language,
+                    AddressPath = nodeOptions.AddressPath.With(i)
+                });
             }
 
             return;
@@ -387,6 +397,46 @@ public partial class DebugRenderer
             }
 
             ImGuiUtils.DrawCopyableText(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+            return;
+        }
+
+        if (columnType.IsStruct())
+        {
+            nodeOptions = nodeOptions.WithAddress((StringComparer.Ordinal.GetHashCode(columnType.Name), (nint)rowId).GetHashCode());
+
+            using var titleColor = ImRaii.PushColor(ImGuiCol.Text, nodeOptions.TitleColor ?? ColorTreeNode.ToVector());
+            using var node = ImRaii.TreeNode($"{columnType.Name}###{nodeOptions.AddressPath}", nodeOptions.GetTreeNodeFlags());
+            nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
+            if (!node) return;
+            titleColor.Dispose();
+
+            foreach (var propInfo in columnType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+            {
+                if (propInfo.Name is "RowId" or "ExcelPage" or "RowOffset")
+                    continue;
+
+                ImGuiUtils.DrawCopyableText(propInfo.PropertyType.ReadableTypeName(), new()
+                {
+                    CopyText = propInfo.PropertyType.ReadableTypeName(ImGui.IsKeyDown(ImGuiKey.LeftShift)),
+                    TextColor = ColorType
+                });
+                ImGui.SameLine();
+                ImGuiUtils.DrawCopyableText(propInfo.Name, new CopyableTextOptions() { TextColor = ColorFieldName });
+                ImGui.SameLine();
+                DrawExcelColumn(
+                    propInfo.Name,
+                    propInfo.PropertyType,
+                    propInfo.GetValue(value),
+                    rowId,
+                    depth,
+                    new NodeOptions()
+                    {
+                        RenderSeString = nodeOptions.RenderSeString,
+                        Language = nodeOptions.Language,
+                        AddressPath = nodeOptions.AddressPath.With(StringComparer.Ordinal.GetHashCode(propInfo.Name))
+                    });
+            }
+
             return;
         }
 
