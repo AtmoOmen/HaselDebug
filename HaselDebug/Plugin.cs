@@ -7,28 +7,35 @@ namespace HaselDebug;
 public partial class Plugin : IAsyncDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
-    private IHost _host;
+    private          IHost                   _host;
 
     [AutoPostConstruct]
     private void Initialize()
     {
         _host = new HostBuilder()
             .UseContentRoot(_pluginInterface.AssemblyLocation.Directory!.FullName)
-            .ConfigureHostOptions(options =>
-            {
-                options.ServicesStartConcurrently = true;
-                options.ServicesStopConcurrently = true;
-            })
-            .ConfigureServices(services =>
-            {
-                services.AddSingleton(_pluginInterface);
-                services.AddHaselCommon();
-                services.AddHaselDebug();
-            })
+            .ConfigureHostOptions
+            (options =>
+                {
+                    options.ServicesStartConcurrently = true;
+                    options.ServicesStopConcurrently  = true;
+                }
+            )
+            .ConfigureServices
+            (services =>
+                {
+                    services.AddSingleton(_pluginInterface);
+                    services.AddDalamud(_pluginInterface);
+                    services.AddHaselCommon();
+                    services.AddHaselDebug();
+                }
+            )
             .Build();
     }
 
-    public Task LoadAsync(CancellationToken cancellationToken)
+    public Task LoadAsync
+    (CancellationToken cancellationToken
+    )
     {
         _pluginInterface.InitializeCustomClientStructs();
         return _host.StartAsync(cancellationToken);

@@ -45,7 +45,7 @@ public unsafe partial class AddressInspectorTab : DebugTab
 
     public override void Draw()
     {
-        _freeMemoryAddress ??= _sigScanner.ScanText("E8 ?? ?? ?? ?? 48 89 5D ?? 48 8B 74 24") - _sigScanner.Module.BaseAddress;
+        _freeMemoryAddress ??= _sigScanner.ScanText("E8 ?? ?? ?? ?? 48 8B 5C 24 ?? 48 8B C7 48 83 C4 ?? 5F C3 CC CC CC CC CC 48 89 5C 24 ?? 57 48 83 EC ?? 48 8D 05 ?? ?? ?? ?? 48 8B D9") - _sigScanner.Module.BaseAddress;
 
         if (_navigationService.CurrentNavigation is AddressInspectorNavigation navData)
         {
