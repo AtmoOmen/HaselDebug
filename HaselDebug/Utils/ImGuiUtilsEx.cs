@@ -101,14 +101,6 @@ public static unsafe class ImGuiUtilsEx
             return changed;
         }
 
-        var path = string.Empty;
-        var version = 1;
-        if (asset->AtkTexture.TextureType == TextureType.Resource)
-        {
-            path = asset->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString();
-            version = asset->AtkTexture.Resource->Version;
-        }
-
         var kernelTexture = asset->AtkTexture.GetKernelTexture();
         if (kernelTexture == null)
         {
@@ -124,35 +116,8 @@ public static unsafe class ImGuiUtilsEx
         {
             AddressPath = new AddressPath((nint)asset),
             DefaultOpen = true,
-            DrawContextMenu = (nodeOptions, builder) =>
-            {
-                builder.Add(new ImGuiContextMenuEntry()
-                {
-                    Visible = !string.IsNullOrEmpty(path),
-                    Label = "Copy Path",
-                    ClickCallback = () => ImGui.SetClipboardText(path)
-                });
-
-                builder.Add(new ImGuiContextMenuEntry()
-                {
-                    Label = "Copy Size",
-                    ClickCallback = () => ImGui.SetClipboardText(ImGui.IsKeyDown(ImGuiKey.LeftShift)
-                        ? $"new Vector2({tex->ActualWidth}, {tex->ActualHeight})"
-                        : $"{tex->ActualWidth}x{tex->ActualHeight}")
-                });
-
-                builder.Add(new ImGuiContextMenuEntry()
-                {
-                    Label = "Copy Format",
-                    ClickCallback = () => ImGui.SetClipboardText($"{tex->TextureFormat}")
-                });
-            }
+            Title = "Preview"
         };
-
-        var texInfo = $"{tex->ActualWidth}x{tex->ActualHeight}, {tex->TextureFormat}";
-        nodeOptions.Title = string.IsNullOrEmpty(path)
-            ? texInfo
-            : $"{path} ({texInfo})";
 
         using var node = debugRenderer.DrawTreeNode(nodeOptions);
         if (!node)
@@ -171,6 +136,10 @@ public static unsafe class ImGuiUtilsEx
         }
 
         var size = new Vector2(tex->ActualWidth, tex->ActualHeight);
+
+        var version = 1;
+        if (asset->AtkTexture.TextureType == TextureType.Resource)
+            version = asset->AtkTexture.Resource->Version;
 
         if (TexDisplayStyle == 1)
         {
@@ -283,6 +252,11 @@ public static unsafe class ImGuiUtilsEx
             {
                 ref var part = ref partsList->Parts[i];
                 var selected = i == partId;
+                var partPath = string.Empty;
+                if (part.UldAsset != null && part.UldAsset->AtkTexture.TextureType == TextureType.Resource)
+                {
+                    partPath = part.UldAsset->AtkTexture.Resource->TexFileResourceHandle->ResourceHandle.FileName.ToString();
+                }
 
                 ImGui.TableNextRow();
 
@@ -309,9 +283,19 @@ public static unsafe class ImGuiUtilsEx
                 ImGui.TableNextColumn(); // Info
                 if (selected) ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, (Color.Gold with { A = 0.5f }).ToUInt());
 
-                ImGui.Text("Position:");
+                ImGui.Text("Path:\t\t\t");
                 ImGui.SameLine();
                 var x = ImCursor.X;
+                ImGuiUtils.DrawCopyableText(partPath, new CopyableTextOptions()
+                {
+                    CopyText = ImGui.IsKeyDown(ImGuiKey.LeftShift)
+                                   ? partPath
+                                   : null
+                });
+
+                ImGui.Text("Position:");
+                ImGui.SameLine();
+                ImCursor.X = x;
                 ImGuiUtils.DrawCopyableText($"({part.U}, {part.V})", new CopyableTextOptions()
                 {
                     CopyText = ImGui.IsKeyDown(ImGuiKey.LeftShift)

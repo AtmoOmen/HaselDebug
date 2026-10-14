@@ -3,7 +3,6 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using HaselDebug.Config;
-using HaselDebug.Extensions;
 using HaselDebug.Service;
 using HaselDebug.Utils;
 using HaselDebug.Windows;
@@ -1066,6 +1065,21 @@ public unsafe partial class AtkDebugRenderer
         {
             case NodeType.Image:
                 var imageNode = (AtkImageNode*)node;
+
+                StartRow("WrapMode");
+                var wrapMode = imageNode->WrapMode;
+                if (ImGui.InputByte("##WrapMode", ref wrapMode, 1))
+                {
+                    imageNode->WrapMode = wrapMode;
+                }
+
+                StartRow("Flags");
+                var imageFlags = imageNode->Flags;
+                if (ImGuiUtilsEx.EnumCombo("##Flags", ref imageFlags, true))
+                {
+                    imageNode->Flags = imageFlags;
+                }
+
                 StartRow("Asset");
                 partId = imageNode->PartId;
                 if (ImGuiUtilsEx.PartListSelector(_serviceProvider, imageNode->PartsList, ref partId))
@@ -1079,8 +1093,7 @@ public unsafe partial class AtkDebugRenderer
                 var textNode = (AtkTextNode*)node;
                 StartRow("Text");
                 var str = new ReadOnlySeString(textNode->NodeText.AsSpan());
-                var macroCode = str.ToString();
-                if (ImGui.Selectable(str.ToString() + $"##TextNodeText{(nint)node:X}"))
+                if (ImGui.Selectable(str.ToMacroString() + $"##TextNodeText{(nint)node:X}"))
                 {
                     var windowTitle = $"Text Node #{node->NodeId} (0x{(nint)node:X})";
                     _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _serviceProvider)
@@ -1148,8 +1161,7 @@ public unsafe partial class AtkDebugRenderer
                 var counterNode = (AtkCounterNode*)node;
                 StartRow("Text");
                 str = new ReadOnlySeString(counterNode->NodeText.AsSpan());
-                macroCode = str.ToString();
-                if (ImGui.Selectable(str.ToString() + $"##CounterNodeText{(nint)node:X}"))
+                if (ImGui.Selectable(str.ToMacroString() + $"##CounterNodeText{(nint)node:X}"))
                 {
                     var windowTitle = $"Counter Node #{node->NodeId} (0x{(nint)node:X})";
                     _windowManager.CreateOrOpen(windowTitle, () => new SeStringInspectorWindow(_windowManager, _textService, _serviceProvider)

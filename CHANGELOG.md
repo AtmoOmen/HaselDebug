@@ -1,12 +1,39 @@
 # Changelog
 
-## [Unreleased]
+## [1.75.3] (2026-10-13)
+
+Update for Patch 7.57.
+
+- **Updated:** ClientStructs now at [78975d83](https://github.com/aers/FFXIVClientStructs/tree/78975d83) ([compare](https://github.com/aers/FFXIVClientStructs/compare/97a7fc48..78975d83)).
+
+## [1.75.2] (2026-10-09)
+
+- **Added:** Type redirect for InstanceContentCrucibleOfTheUnbroken.
+- **Updated:** ClientStructs now at [97a7fc48](https://github.com/aers/FFXIVClientStructs/tree/97a7fc48) ([compare](https://github.com/aers/FFXIVClientStructs/compare/29c7c22e..97a7fc48)).
+
+## [1.75.1] (2026-09-26)
+
+- **Updated:** Image node property inputs were added for WrapMode and Flags.
+- **Updated:** Image node assets now draw paths per part. (Thanks @MidoriKami)
+- **Fixed:** In the Chocobo Taxi Stands tab, TimeRequired and Fare were swapped due to updated sheets.
+- **Updated:** ClientStructs now at [29c7c22e](https://github.com/aers/FFXIVClientStructs/tree/29c7c22e) ([compare](https://github.com/aers/FFXIVClientStructs/compare/f64a80e8..29c7c22e)).
+
+## [1.75.0] (2026-09-17)
+
+- **Added:** HaselDebug now ships with custom Lumina.Excel. It uses the latest branch from EXDSchema (currently at [f3cacf3b](https://github.com/xivdev/EXDSchema/tree/f3cacf3b)) for the Excel tab when the Experimental Sheets checkbox is selected.
+- **Added:** `Guid` structs are now displaying their text form and can be copied.
+- **Fixed:** TextNodes weren't displaying the text as macro string anymore since the change in Lumina.
+- **Updated:** ClientStructs now at [f64a80e8](https://github.com/aers/FFXIVClientStructs/tree/f64a80e8) ([compare](https://github.com/aers/FFXIVClientStructs/compare/1f10edb6..f64a80e8)).
+
+## [1.74.0] (2026-09-08)
+
+Update for Patch 7.56.
 
 - **Added:** Type redirect for GuildleveAssignmentEventHandler.
 - **Added:** The Outfits unlock tab now has a Online Store column, displaying whether the set can be bought.
 - **Updated:** The plugin now disposes asynchronously, concurrently and on the Framework thread.
 - **Updated:** The GameWindow tab was removed because a special case for the Arguments pointer was added to draw them as array.
-- **Updated:** ClientStructs now at [d8633414](https://github.com/aers/FFXIVClientStructs/tree/d8633414) ([compare](https://github.com/aers/FFXIVClientStructs/compare/5af9ff4c..d8633414)).
+- **Updated:** ClientStructs now at [1f10edb6](https://github.com/aers/FFXIVClientStructs/tree/1f10edb6) ([compare](https://github.com/aers/FFXIVClientStructs/compare/5af9ff4c..1f10edb6)).
 
 ## [1.73.0] (2026-09-02)
 
@@ -1126,7 +1153,12 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.73.0...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.3...main
+[1.75.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.2...v1.75.3
+[1.75.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.1...v1.75.2
+[1.75.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.0...v1.75.1
+[1.75.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.74.0...v1.75.0
+[1.74.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.73.0...v1.74.0
 [1.73.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.72.0...v1.73.0
 [1.72.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.71.0...v1.72.0
 [1.71.0]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.70.0...v1.71.0

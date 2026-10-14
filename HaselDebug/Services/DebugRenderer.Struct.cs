@@ -11,7 +11,6 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Common.Component.Excel;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.STD;
-using HaselDebug.Extensions;
 using HaselDebug.Utils;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUldManager;
 
@@ -454,6 +453,21 @@ public unsafe partial class DebugRenderer
         {
             DrawFieldName(fieldInfo);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Size*)fieldAddress).ToString() });
+            return;
+        }
+
+        if (fieldType == typeof(Guid))
+        {
+            var guidString = (*(Guid*)fieldAddress).ToString();
+            DrawFieldName(fieldInfo);
+            DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with
+            {
+                Title = guidString,
+                DrawContextMenu = (nodeOptions, builder) =>
+                {
+                    builder.AddCopyValueString(guidString);
+                }
+            });
             return;
         }
 

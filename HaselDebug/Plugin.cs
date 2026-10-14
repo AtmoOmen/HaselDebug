@@ -1,6 +1,5 @@
 using System.Threading;
 using System.Threading.Tasks;
-using HaselDebug.Config;
 
 namespace HaselDebug;
 
@@ -22,8 +21,7 @@ public partial class Plugin : IAsyncDalamudPlugin
             })
             .ConfigureServices(services =>
             {
-                services.AddDalamud(_pluginInterface);
-                services.AddConfig(PluginConfig.Load(_pluginInterface));
+                services.AddSingleton(_pluginInterface);
                 services.AddHaselCommon();
                 services.AddHaselDebug();
             })
