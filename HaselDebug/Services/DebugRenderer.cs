@@ -59,6 +59,7 @@ public unsafe partial class DebugRenderer
     private readonly PluginConfig _pluginConfig;
     private readonly IAddonLifecycle _addonLifecycle;
     private readonly IAgentLifecycle _agentLifecycle;
+    private readonly TypeService typeService;
 
     public void DrawPointerType<T>(T* obj, NodeOptions? nodeOptions = null) where T : unmanaged
         => DrawPointerType((nint)obj, typeof(T), nodeOptions);

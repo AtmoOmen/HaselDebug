@@ -23,7 +23,6 @@ public unsafe partial class AgentsTab : DebugTab
     private readonly WindowManager _windowManager;
     private readonly NavigationService _navigationService;
 
-    private ImmutableSortedDictionary<AgentId, (Pointer<AgentInterface> Address, Type Type)>? _agents;
     private AgentId _selectedAgentId = AgentId.Lobby;
     private string _agentNameSearchTerm = string.Empty;
 
@@ -31,12 +30,6 @@ public unsafe partial class AgentsTab : DebugTab
 
     public override void Draw()
     {
-        _agents ??= typeof(AgentAttribute).Assembly.GetTypes()
-            .Where(t => Attribute.IsDefined(t, typeof(AgentAttribute)))
-            .ToImmutableSortedDictionary(
-                type => type.GetCustomAttribute<AgentAttribute>()!.Id,
-                type => ((Pointer<AgentInterface>)AgentModule.Instance()->GetAgentByInternalId(type.GetCustomAttribute<AgentAttribute>()!.Id), type));
-
         if (_navigationService.CurrentNavigation is AgentNavigation agentNav)
         {
             _selectedAgentId = agentNav.AgentId;
@@ -170,7 +163,7 @@ public unsafe partial class AgentsTab : DebugTab
         using var hostchild = ImRaii.Child("AgentChild", new Vector2(-1), true, ImGuiWindowFlags.NoSavedSettings);
 
         var agent = AgentModule.Instance()->GetAgentByInternalId(agentId);
-        var agentType = _agents!.TryGetValue(agentId, out var value) ? value.Type : typeof(AgentInterface);
+        var agentType = _typeService.GetAgentType(agentId);
 
         _debugRenderer.DrawPointerType(agent, agentType, new NodeOptions()
         {

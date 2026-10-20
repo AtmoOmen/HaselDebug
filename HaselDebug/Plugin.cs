@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using FFXIVClientStructs.Expansion;
 
 namespace HaselDebug;
 
@@ -7,6 +8,7 @@ namespace HaselDebug;
 public partial class Plugin : IAsyncDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
+    private readonly ISigScanner sigScanner;
     private          IHost                   _host;
 
     [AutoPostConstruct]
@@ -38,6 +40,7 @@ public partial class Plugin : IAsyncDalamudPlugin
     )
     {
         _pluginInterface.InitializeCustomClientStructs();
+        ExpansionInterop.Initialize(sigScanner.SearchBase);
         return _host.StartAsync(cancellationToken);
     }
 
@@ -49,7 +52,14 @@ public partial class Plugin : IAsyncDalamudPlugin
         }
         finally
         {
-            _host.Dispose();
+            try
+            {
+                _host.Dispose();
+            }
+            finally
+            {
+                ExpansionInterop.Uninitialize();
+            }
         }
     }
 }

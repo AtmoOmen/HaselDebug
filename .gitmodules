@@ -7,3 +7,6 @@
 [submodule "Lumina.Excel"]
 	path = Lumina.Excel
 	url = https://github.com/NotAdam/Lumina.Excel.git
+[submodule "FFXIVClientStructs.Expansion"]
+	path = FFXIVClientStructs.Expansion
+	url = https://github.com/AtmoOmen/FFXIVClientStructs.Expansion

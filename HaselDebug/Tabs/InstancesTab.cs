@@ -1,4 +1,5 @@
 using System.Reflection;
+using FFXIVClientStructs.Attributes;
 using HaselDebug.Abstracts;
 using HaselDebug.Interfaces;
 using HaselDebug.Services;
@@ -29,7 +30,7 @@ public unsafe partial class InstancesTab : DebugTab
 
         foreach (var (i, type) in _typeService.Instances.Index())
         {
-            if (_typeService.AgentTypes != null && _typeService.AgentTypes.ContainsValue(type))
+            if (type.IsDefined(typeof(AgentAttribute), false))
                 continue;
 
             if (hasSearchTerm && !type.FullName!.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))

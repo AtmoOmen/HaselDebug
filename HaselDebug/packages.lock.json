@@ -389,6 +389,13 @@
           "InteropGenerator.Runtime": "[1.0.0, )"
         }
       },
+      "ffxivclientstructs.expansion": {
+        "type": "Project",
+        "dependencies": {
+          "FFXIVClientStructs": "[1.0.0, )",
+          "InteropGenerator.Runtime": "[1.0.0, )"
+        }
+      },
       "haselcommon": {
         "type": "Project",
         "dependencies": {

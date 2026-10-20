@@ -31,19 +31,22 @@ public partial class DebugRenderer
         if (_memberDocs.Count != 0)
             return;
 
-        var csXmlPath = Path.Join(_pluginInterface.AssemblyLocation.Directory!.FullName, "FFXIVClientStructs.xml");
-        if (!File.Exists(csXmlPath))
-            return;
-
         try
         {
             var serializer = new XmlSerializer(typeof(XmlDoc));
-            using var reader = new FileStream(csXmlPath, FileMode.Open);
-            var doc = (XmlDoc?)serializer.Deserialize(reader);
-            if (doc == null || doc.Members == null)
-                return;
+            var members = new List<XmlDocMember>();
+            foreach (var fileName in new[] { "FFXIVClientStructs.xml", "FFXIVClientStructs.Expansion.xml" })
+            {
+                var xmlPath = Path.Join(_pluginInterface.AssemblyLocation.Directory!.FullName, fileName);
+                if (!File.Exists(xmlPath))
+                    continue;
 
-            var tempDict = doc.Members.ToDictionary(member => member.Name, StringComparer.Ordinal);
+                using var reader = new FileStream(xmlPath, FileMode.Open);
+                if (serializer.Deserialize(reader) is XmlDoc { Members: { } documentMembers })
+                    members.AddRange(documentMembers);
+            }
+
+            var tempDict = members.ToDictionary(member => member.Name, StringComparer.Ordinal);
 
             var summaries = new List<string>();
             var remarks = new List<string>();
@@ -86,7 +89,7 @@ public partial class DebugRenderer
                 ProcessMemberText(member);
             }
 
-            foreach (var member in doc.Members)
+            foreach (var member in members)
             {
                 if (member.Name[0] is not ('F' or 'P')) // fields and properties are enough
                     continue;

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'FFXIVClientStructs.Expansion'">
+    <Use_Dalamud_FFXIVClientStructs>false</Use_Dalamud_FFXIVClientStructs>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'FFXIVClientStructs.Expansion'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)FFXIVClientStructs/FFXIVClientStructs/FFXIVClientStructs.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)FFXIVClientStructs/InteropGenerator.Runtime/InteropGenerator.Runtime.csproj" />
+  </ItemGroup>
+</Project>

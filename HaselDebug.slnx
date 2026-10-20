@@ -7,6 +7,8 @@
   <Project Path="FFXIVClientStructs/FFXIVClientStructs/FFXIVClientStructs.csproj" />
   <Project Path="FFXIVClientStructs/InteropGenerator.Runtime/InteropGenerator.Runtime.csproj" />
   <Project Path="FFXIVClientStructs/InteropGenerator/InteropGenerator.csproj" />
+  <Project Path="FFXIVClientStructs.Expansion/FFXIVClientStructs.Expansion.Generators/FFXIVClientStructs.Expansion.Generators.csproj" />
+  <Project Path="FFXIVClientStructs.Expansion/FFXIVClientStructs.Expansion/FFXIVClientStructs.Expansion.csproj" />
   <Project Path="HaselCommon/HaselCommon.Generators/HaselCommon.Generators.csproj" />
   <Project Path="HaselCommon/HaselCommon/HaselCommon.csproj">
     <Platform Project="x64" />

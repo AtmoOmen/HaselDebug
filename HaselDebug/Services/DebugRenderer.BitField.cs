@@ -1,44 +1,62 @@
 using System.Globalization;
 using System.Reflection;
+using HaselDebug.Utils;
 
 namespace HaselDebug.Services;
 
 public unsafe partial class DebugRenderer
 {
-    private void DrawBitFields(Type structType, nint fieldAddress, int fieldOffset, Type fieldType, FieldInfo fieldInfo)
+    private void DrawBitFields(nint fieldAddress, StructField field)
     {
-        foreach (var structAttr in structType.GetCustomAttributes())
+        Dictionary<(Type Type, string Name, int Index, int Length), (Attribute Attribute, StructField Field)>? attributes = null;
+        for (var i = 0; i < 2; i++)
         {
-            var structAttrType = structAttr.GetType();
-            if (!structAttrType.IsGenericType)
+            var fieldInfo = i == 0 ? field.Original ?? field.Field : field.Expansion;
+            if (fieldInfo == null || i == 1 && fieldInfo == field.Field && field.Original == null)
                 continue;
 
-            if (structAttrType.GetGenericTypeDefinition() != typeof(InheritsAttribute<>))
-                continue;
-
-            var parentStructType = structAttrType.GenericTypeArguments[0];
-            var parentFieldInfo = parentStructType.GetField(fieldInfo.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            if (parentFieldInfo != null)
+            foreach (var attribute in fieldInfo.GetCustomAttributes())
             {
-                DrawBitFields(parentStructType, fieldAddress, fieldOffset, fieldType, parentFieldInfo);
+                var attributeType = attribute.GetType();
+                if (!attributeType.IsGenericType || attributeType.GetGenericTypeDefinition() != typeof(BitFieldAttribute<>))
+                    continue;
+
+                var name = (string)attributeType.GetProperty("Name")!.GetValue(attribute)!;
+                var index = (int)attributeType.GetProperty("Index")!.GetValue(attribute)!;
+                var length = (int)attributeType.GetProperty("Length")!.GetValue(attribute)!;
+                var key = (attributeType, name, index, length);
+                var source = field with
+                {
+                    Field = fieldInfo,
+                    Original = i == 0 ? field.Original : null,
+                    Expansion = fieldInfo == field.Expansion ? field.Expansion : null
+                };
+                attributes ??= [];
+                if (attributes.TryGetValue(key, out var existing))
+                {
+                    attributes[key] = (existing.Attribute, existing.Field with { Expansion = source.Expansion });
+                }
+                else
+                {
+                    attributes.Add(key, (attribute, source));
+                }
             }
         }
 
-        foreach (var attr in fieldInfo.GetCustomAttributes())
+        if (attributes == null)
+            return;
+
+        foreach (var (attribute, source) in attributes.Values)
         {
-            var attrType = attr.GetType();
-            if (!attrType.IsGenericType)
-                continue;
-
-            if (attrType.GetGenericTypeDefinition() != typeof(BitFieldAttribute<>))
-                continue;
-
-            DrawBitField(structType, fieldAddress, fieldOffset, fieldType, attr, attrType);
+            DrawBitField(source, fieldAddress, attribute, attribute.GetType());
         }
     }
 
-    private void DrawBitField(Type structType, nint fieldAddress, int fieldOffset, Type fieldType, Attribute attr, Type attrType)
+    private void DrawBitField(StructField field, nint fieldAddress, Attribute attr, Type attrType)
     {
+        var structType = field.Field.DeclaringType!;
+        var fieldOffset = field.Offset;
+        var fieldType = field.Field.FieldType;
         var bitfieldType = attrType.GenericTypeArguments[0];
         var name = (string)attrType.GetProperty("Name")!.GetValue(attr)!;
         var index = (int)attrType.GetProperty("Index")!.GetValue(attr)!;
@@ -145,6 +163,9 @@ public unsafe partial class DebugRenderer
             }
         }
 
+        ImGui.SameLine();
+
+        DrawFieldSource(field);
         ImGui.SameLine();
 
         switch (bitfieldType)

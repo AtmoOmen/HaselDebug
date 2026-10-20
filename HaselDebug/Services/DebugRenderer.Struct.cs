@@ -22,7 +22,10 @@ public unsafe partial class DebugRenderer
     {
         nodeOptions = nodeOptions.WithAddress(address);
 
-        var fields = GetAllInheritedFields(type);
+        if (typeService.StructViews.TryGetValue(type, out var views))
+            type = views.Original;
+
+        var fields = typeService.GetStructFields(type);
 
         if (type == typeof(AtkComponentTreeListItem) && nodeOptions.SeStringTitle == null && nodeOptions.Title == null)
         {
@@ -39,27 +42,26 @@ public unsafe partial class DebugRenderer
         using var node = DrawTreeNode(nodeOptions.WithSeStringTitleIfNull(type.FullName ?? "Unknown Type Name"));
         if (!node) return;
 
-        var processedFields = fields
-            .OrderBy(fieldInfo => fieldInfo.FieldOffset)
-            .Select(fieldInfo => (
-                Info: fieldInfo,
-                Offset: fieldInfo.FieldOffset,
-                Size: fieldInfo.IsFixed ? fieldInfo.FixedType.SizeOf() * fieldInfo.FixedSize : fieldInfo.FieldType.SizeOf()));
+        DrawStructFields(address, fields, nodeOptions.ConsumeTreeNodeOptions());
+    }
 
-        nodeOptions = nodeOptions.ConsumeTreeNodeOptions();
-
-        foreach (var (i, (fieldInfo, offset, size)) in processedFields.Index())
+    private void DrawStructFields(nint address, StructField[] fields, NodeOptions nodeOptions)
+    {
+        foreach (var (i, field) in fields.Index())
         {
-            DrawField(address, offset, type, fieldInfo, nodeOptions.WithAddress(i));
+            DrawField(address, field, nodeOptions.WithAddress(i));
         }
     }
 
-    private void DrawField(nint address, int offset, Type parentType, FieldInfo fieldInfo, NodeOptions fieldNodeOptions)
+    private void DrawField(nint address, StructField structField, NodeOptions fieldNodeOptions)
     {
+        var fieldInfo = structField.Field;
+        var offset = structField.Offset;
+        var parentType = structField.ParentType;
         var fieldAddress = address + offset;
         var fieldType = fieldInfo.FieldType;
 
-        DrawBitFields(parentType, fieldAddress, offset, fieldType, fieldInfo);
+        DrawBitFields(fieldAddress, structField);
 
         ImGuiUtils.DrawCopyableText($"[0x{offset:X}]", new()
         {
@@ -106,7 +108,7 @@ public unsafe partial class DebugRenderer
         // delegate*
         if (fieldType.IsFunctionPointer || fieldType.IsUnmanagedFunctionPointer)
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawAddress(*(nint*)fieldAddress);
             return;
         }
@@ -118,7 +120,7 @@ public unsafe partial class DebugRenderer
             && fieldInfo.GetCustomAttribute<FixedSizeArrayAttribute>() is FixedSizeArrayAttribute fixedSizeArrayAttribute
             && fieldType.GetCustomAttribute<InlineArrayAttribute>() is InlineArrayAttribute inlineArrayAttribute)
         {
-            DrawFieldName(fieldInfo, fieldInfo.Name[1..].FirstCharToUpper());
+            DrawFieldName(structField, fieldInfo.Name[1..].FirstCharToUpper());
             DrawFixedSizeArray(fieldAddress, fieldType, fixedSizeArrayAttribute.IsString, fieldNodeOptions);
             return;
         }
@@ -134,7 +136,7 @@ public unsafe partial class DebugRenderer
                 return;
             }
 
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawStdVector(fieldAddress, underlyingType, fieldNodeOptions);
             return;
         }
@@ -150,7 +152,7 @@ public unsafe partial class DebugRenderer
                 return;
             }
 
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawStdDeque(fieldAddress, underlyingType, fieldNodeOptions);
             return;
         }
@@ -166,7 +168,7 @@ public unsafe partial class DebugRenderer
                 return;
             }
 
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawStdList(fieldAddress, underlyingType, fieldNodeOptions);
             return;
         }
@@ -174,7 +176,7 @@ public unsafe partial class DebugRenderer
         // AgentInterface.AddonId
         if (Inherits<AgentInterface>(parentType) && fieldType == typeof(uint) && fieldInfo.Name == nameof(AgentInterface.AddonId))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions);
             var unitBase = RaptureAtkUnitManager.Instance()->GetAddonById(*(ushort*)fieldAddress);
             if (unitBase != null)
@@ -188,7 +190,7 @@ public unsafe partial class DebugRenderer
         // AtkUnitBase.AtkValues
         if (Inherits<AtkUnitBase>(parentType) && fieldType == typeof(AtkValue*) && fieldInfo.Name == nameof(AtkUnitBase.AtkValues))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawAtkValues(*(AtkValue**)fieldAddress, ((AtkUnitBase*)address)->AtkValuesCount, fieldNodeOptions);
             return;
         }
@@ -196,7 +198,7 @@ public unsafe partial class DebugRenderer
         // AtkUldManager.Assets
         if (Inherits<AtkUldManager>(parentType) && fieldType == typeof(AtkUldAsset*) && fieldInfo.Name == nameof(AtkUldManager.Assets))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkUldAsset>(*(nint**)fieldAddress, ((AtkUldManager*)address)->AssetCount), fieldNodeOptions);
             return;
         }
@@ -204,7 +206,7 @@ public unsafe partial class DebugRenderer
         // AtkUldManager.PartsList
         if (Inherits<AtkUldManager>(parentType) && fieldType == typeof(AtkUldPartsList*) && fieldInfo.Name == nameof(AtkUldManager.PartsList))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkUldPartsList>(*(nint**)fieldAddress, ((AtkUldManager*)address)->PartsListCount), fieldNodeOptions);
             return;
         }
@@ -212,7 +214,7 @@ public unsafe partial class DebugRenderer
         // AtkUldManager.NodeList
         if (Inherits<AtkUldManager>(parentType) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == nameof(AtkUldManager.NodeList))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<Pointer<AtkResNode>>(*(nint**)fieldAddress, ((AtkUldManager*)address)->NodeListCount), fieldNodeOptions);
             return;
         }
@@ -220,7 +222,7 @@ public unsafe partial class DebugRenderer
         // AtkUldManager.Objects
         if (Inherits<AtkUldManager>(parentType) && fieldType == typeof(AtkUldObjectInfo*) && fieldInfo.Name == nameof(AtkUldManager.Objects))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             var uldManager = (AtkUldManager*)address;
             var objectCount = uldManager->ObjectCount;
             switch (uldManager->BaseType)
@@ -246,7 +248,7 @@ public unsafe partial class DebugRenderer
         // AtkUldWidgetInfo.NodeList
         if (parentType == typeof(AtkUldWidgetInfo) && fieldType == typeof(AtkResNode**) && fieldInfo.Name == nameof(AtkUldWidgetInfo.NodeList))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<Pointer<AtkResNode>>(*(nint**)fieldAddress, ((AtkUldWidgetInfo*)address)->NodeCount), fieldNodeOptions);
             return;
         }
@@ -254,7 +256,7 @@ public unsafe partial class DebugRenderer
         // DuplicateObjectList.NodeList
         if (parentType == typeof(DuplicateObjectList) && fieldType == typeof(AtkComponentNode*) && fieldInfo.Name == nameof(DuplicateObjectList.NodeList))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkComponentNode>(*(nint**)fieldAddress, (int)((DuplicateObjectList*)address)->NodeCount), fieldNodeOptions);
             return;
         }
@@ -262,7 +264,7 @@ public unsafe partial class DebugRenderer
         // AtkTimelineManager.Timelines
         if (parentType == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimeline*) && fieldInfo.Name == nameof(AtkTimelineManager.Timelines))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkTimeline>(*(nint**)fieldAddress, ((AtkTimelineManager*)address)->TimelineCount), fieldNodeOptions);
             return;
         }
@@ -270,7 +272,7 @@ public unsafe partial class DebugRenderer
         // AtkTimelineManager.Animations
         if (parentType == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineAnimation*) && fieldInfo.Name == nameof(AtkTimelineManager.Animations))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkTimelineAnimation>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->AnimationCount), fieldNodeOptions);
             return;
         }
@@ -278,7 +280,7 @@ public unsafe partial class DebugRenderer
         // AtkTimelineManager.LabelSets
         if (parentType == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineLabelSet*) && fieldInfo.Name == nameof(AtkTimelineManager.LabelSets))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkTimelineLabelSet>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->LabelSetCount), fieldNodeOptions);
             return;
         }
@@ -286,7 +288,7 @@ public unsafe partial class DebugRenderer
         // AtkTimelineManager.KeyFrames
         if (parentType == typeof(AtkTimelineManager) && fieldType == typeof(AtkTimelineKeyFrame*) && fieldInfo.Name == nameof(AtkTimelineManager.KeyFrames))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AtkTimelineKeyFrame>(*(nint**)fieldAddress, (int)((AtkTimelineManager*)address)->KeyFrameCount), fieldNodeOptions);
             return;
         }
@@ -294,7 +296,7 @@ public unsafe partial class DebugRenderer
         // ExcelSheet.ColumnDefinitions
         if (parentType == typeof(ExcelSheet) && fieldType == typeof(ExcelSheet.ColumnInfo*) && fieldInfo.Name == nameof(ExcelSheet.ColumnDefinitions))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<ExcelSheet.ColumnInfo>(*(nint**)fieldAddress, ((ExcelSheet*)address)->ColumnCount), fieldNodeOptions);
             return;
         }
@@ -302,7 +304,7 @@ public unsafe partial class DebugRenderer
         // AgentShop.ItemReceive
         if (parentType == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemReceive))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(((AgentShop*)address)->ItemReceiveSpan, fieldNodeOptions);
             return;
         }
@@ -310,7 +312,7 @@ public unsafe partial class DebugRenderer
         // AgentShop.ItemCost
         if (parentType == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemCost))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(((AgentShop*)address)->ItemCostSpan, fieldNodeOptions);
             return;
         }
@@ -318,7 +320,7 @@ public unsafe partial class DebugRenderer
         // AgentShop.ItemRetainerBuyback
         if (parentType == typeof(AgentShop) && fieldType == typeof(AgentShop.ShopItem*) && fieldInfo.Name == nameof(AgentShop.ItemRetainerBuyback))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(((AgentShop*)address)->ItemRetainerBuybackSpan, fieldNodeOptions);
             return;
         }
@@ -326,7 +328,7 @@ public unsafe partial class DebugRenderer
         // AddonListIcon.ItemData
         if (parentType == typeof(AddonListIcon) && fieldType == typeof(AddonListIcon.ItemData*) && fieldInfo.Name == nameof(AddonListIcon.ListData))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(new Span<AddonListIcon.ItemData>(((AddonListIcon*)address)->ListData, ((AddonListIcon*)address)->TotalItemCount), fieldNodeOptions);
             return;
         }
@@ -334,7 +336,7 @@ public unsafe partial class DebugRenderer
         // GameWindow.Arguments
         if (parentType == typeof(GameWindow) && fieldType == typeof(CStringPointer*) && fieldInfo.Name == nameof(GameWindow.Arguments))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawArray(((GameWindow*)address)->ArgumentsSpan, fieldNodeOptions);
             return;
         }
@@ -344,7 +346,7 @@ public unsafe partial class DebugRenderer
         {
             var color = *(ByteColor*)fieldAddress;
 
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
 
             ImGui.SameLine();
@@ -372,7 +374,7 @@ public unsafe partial class DebugRenderer
         // ResourceHandle.FileType
         if (Inherits<ResourceHandle>(parentType) && fieldType == typeof(uint) && fieldInfo.Name == nameof(ResourceHandle.FileType))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
             ImGui.SameLine();
             ImGuiUtils.DrawCopyableText(((ResourceHandle*)address)->FileTypeString);
@@ -382,7 +384,7 @@ public unsafe partial class DebugRenderer
         // InventoryItem.CrafterContentId
         if (Inherits<InventoryItem>(parentType) && fieldType == typeof(ulong) && fieldInfo.Name == nameof(InventoryItem.CrafterContentId))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerNumber(fieldAddress, fieldType, fieldNodeOptions);
             ImGui.SameLine();
             ImGuiUtils.DrawCopyableText(NameCache.Instance()->GetNameByContentId(*(ulong*)fieldAddress).ToString());
@@ -392,7 +394,7 @@ public unsafe partial class DebugRenderer
         // byte* that are strings
         if (fieldType.IsPointer && _knownStringPointers.TryGetValue(parentType, out var fieldNames) && fieldNames.Contains(fieldInfo.Name))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawSeString(*(byte**)fieldAddress, fieldNodeOptions);
             return;
         }
@@ -400,13 +402,13 @@ public unsafe partial class DebugRenderer
         // Vector2
         if (fieldType == typeof(Vector2))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(Vector2*)fieldAddress).ToString() });
             return;
         }
         if (fieldType == typeof(FFXIVClientStructs.FFXIV.Common.Math.Vector2))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with
             {
                 Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Vector2*)fieldAddress).ToString()
@@ -417,13 +419,13 @@ public unsafe partial class DebugRenderer
         // Vector3
         if (fieldType == typeof(Vector3))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(Vector3*)fieldAddress).ToString() });
             return;
         }
         if (fieldType == typeof(FFXIVClientStructs.FFXIV.Common.Math.Vector3))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with
             {
                 Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Vector3*)fieldAddress).ToString()
@@ -434,13 +436,13 @@ public unsafe partial class DebugRenderer
         // Vector4
         if (fieldType == typeof(Vector4))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(Vector4*)fieldAddress).ToString() });
             return;
         }
         if (fieldType == typeof(FFXIVClientStructs.FFXIV.Common.Math.Vector4))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with
             {
                 Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Vector4*)fieldAddress).ToString()
@@ -451,7 +453,7 @@ public unsafe partial class DebugRenderer
         // Math.Size
         if (fieldType == typeof(FFXIVClientStructs.FFXIV.Common.Math.Size))
         {
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with { Title = (*(FFXIVClientStructs.FFXIV.Common.Math.Size*)fieldAddress).ToString() });
             return;
         }
@@ -459,7 +461,7 @@ public unsafe partial class DebugRenderer
         if (fieldType == typeof(Guid))
         {
             var guidString = (*(Guid*)fieldAddress).ToString();
-            DrawFieldName(fieldInfo);
+            DrawFieldName(structField);
             DrawPointerType(fieldAddress, fieldType, fieldNodeOptions with
             {
                 Title = guidString,
@@ -473,7 +475,7 @@ public unsafe partial class DebugRenderer
 
         // TODO: enum values table
 
-        DrawFieldName(fieldInfo);
+        DrawFieldName(structField);
         DrawPointerType(fieldAddress, fieldType, fieldNodeOptions);
 
         if (fieldType == typeof(AtkTexture))
@@ -482,11 +484,13 @@ public unsafe partial class DebugRenderer
         }
     }
 
-    private void DrawFieldName(FieldInfo fieldInfo, string? fieldNameOverride = null)
+    private void DrawFieldName(StructField structField, string? fieldNameOverride = null)
     {
+        var fieldInfo = structField.Field;
         var name = fieldNameOverride ?? fieldInfo.Name;
-        var fullName = (fieldInfo.DeclaringType != null ? fieldInfo.DeclaringType.FullName + "." : string.Empty) + fieldInfo.Name;
-        var hasDoc = HasDocumentation(fullName);
+        var fullName = $"{fieldInfo.DeclaringType?.FullName}.{fieldInfo.Name}";
+        var expansionName = structField.Expansion is { } expansion ? $"{expansion.DeclaringType?.FullName}.{expansion.Name}" : null;
+        var hasDoc = HasDocumentation(fullName) || HasDocumentation(expansionName);
         var startPos = ImCursor.ScreenPosition;
 
         ImGuiUtils.DrawCopyableText(name, new CopyableTextOptions() { NoTooltip = true, TextColor = fieldInfo.IsPrivate ? ColorFieldName with { A = 0.67f } : ColorFieldName });
@@ -502,34 +506,64 @@ public unsafe partial class DebugRenderer
             using var tooltip = ImRaii.Tooltip();
             ImGui.TextColored(ColorFieldName, name);
 
-            if (hasDoc)
+            for (var i = 0; i < 2; i++)
             {
+                var documentationName = i == 0 ? fullName : expansionName;
+                if (i == 1 && documentationName == fullName)
+                    continue;
+
+                var doc = GetDocumentation(documentationName);
+                if (doc == null)
+                    continue;
+
                 using var font = _pluginInterface.UiBuilder.MonoFontHandle.Push();
-                var doc = GetDocumentation(fullName);
-                if (doc != null)
+                ImGui.Separator();
+                if (structField.Original != null && structField.Expansion != null)
+                    ImGui.TextColored(Color.Text600, i == 0 ? "FFCS" : "扩展");
+
+                if (!string.IsNullOrEmpty(doc.Sumamry))
+                    ImGui.Text(doc.Sumamry);
+
+                if (!string.IsNullOrEmpty(doc.Remarks))
+                    ImGui.Text(doc.Remarks);
+
+                foreach (var param in doc.Parameters)
                 {
-                    ImGui.Separator();
-
-                    if (!string.IsNullOrEmpty(doc.Sumamry))
-                        ImGui.Text(doc.Sumamry);
-
-                    if (!string.IsNullOrEmpty(doc.Remarks))
-                        ImGui.Text(doc.Remarks);
-
-                    if (doc.Parameters.Length > 0)
-                    {
-                        foreach (var param in doc.Parameters)
-                        {
-                            ImGui.Text($"{param.Key}: {param.Value}");
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(doc.Returns))
-                        ImGui.Text(doc.Returns);
+                    ImGui.Text($"{param.Key}: {param.Value}");
                 }
+
+                if (!string.IsNullOrEmpty(doc.Returns))
+                    ImGui.Text(doc.Returns);
             }
         }
 
+        DrawFieldSource(structField);
+
         ImGui.SameLine();
+    }
+
+    private static void DrawFieldSource(StructField field)
+    {
+        if (field.Original == null && field.Expansion == null)
+            return;
+
+        var label = "[FFCS]";
+        var color = Color.Text600;
+        if (field.Expansion != null)
+        {
+            label = field.Original != null ? "[FFCS + 扩展]" : "[扩展]";
+            color = Color.Gold;
+        }
+
+        ImGui.SameLine();
+        ImGui.TextColored(color, label);
+        if (ImGui.IsItemHovered())
+        {
+            using var tooltip = ImRaii.Tooltip();
+            if (field.Original is { } original)
+                ImGui.Text($"FFCS: {original.DeclaringType?.FullName}.{original.Name}");
+            if (field.Expansion is { } expansion)
+                ImGui.Text($"扩展: {expansion.DeclaringType?.FullName}.{expansion.Name}");
+        }
     }
 }
