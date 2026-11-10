@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.75.4] (2026-11-10)
+
+Update for Patch 7.58.
+
+- **Added:** Type redirect for DrawObjectType CullingBox.
+- **Added:** Housing Signboard Packet Log tab to inspect data from that packet.
+- **Fixed:** Text in the Unlock Links table should no longer overlap due to missing line break when the completed checkbox is drawn on an item icon.
+- **Updated:** ClientStructs now at [80cb4a7b](https://github.com/aers/FFXIVClientStructs/tree/80cb4a7b) ([compare](https://github.com/aers/FFXIVClientStructs/compare/78975d83..80cb4a7b)).
+
 ## [1.75.3] (2026-10-13)
 
 Update for Patch 7.57.
@@ -1153,7 +1162,8 @@ Updated CS for 7.05hf1
 
 First release! 🥳
 
-[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.3...main
+[unreleased]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.4...main
+[1.75.4]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.3...v1.75.4
 [1.75.3]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.2...v1.75.3
 [1.75.2]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.1...v1.75.2
 [1.75.1]: https://github.com/Haselnussbomber/HaselDebug/compare/v1.75.0...v1.75.1
